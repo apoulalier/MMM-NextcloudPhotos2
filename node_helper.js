@@ -130,7 +130,7 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
   const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
 
   const davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${encodeURIComponent(baseFolderPath)}/`;
-  if(isSubfolder) console.log(`[MMM-NextcloudPhotos2] ${davUrl} / ${rawName}`);
+  if(isSubfolder) console.log(`[MMM-NextcloudPhotos2] ${davUrl} / ${folderPath}`);
 
   const propfindBody = `<?xml version="1.0" encoding="UTF-8"?>
   <d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
