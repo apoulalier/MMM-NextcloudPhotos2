@@ -12,7 +12,7 @@ try {
   // Limit sharp cache to reduce memory footprint
   sharp.cache({ memory: 50, files: 5, items: 20 });
 } catch (err) {
-  console.warn("[MMM-NextcloudPhotos] sharp nem elérhető, képek átméretezés nélkül lesznek mentve.");
+  console.warn("[MMM-NextcloudPhotos2] sharp n'est pas disponible, les images seront sauvegardées sans redimensionnement.");
   sharp = null;
 }
 
@@ -27,7 +27,7 @@ module.exports = NodeHelper.create({
   retryCount: 0,
 
   start: function () {
-    console.log("[MMM-NextcloudPhotos] Node helper started.");
+    console.log("[MMM-NextcloudPhotos2] Node helper started.");
   },
 
   socketNotificationReceived: function (notification, payload) {
@@ -54,11 +54,11 @@ module.exports = NodeHelper.create({
     try {
       const data = fs.readFileSync(this.tokenFile, "utf8");
       this.tokens = JSON.parse(data);
-      console.log("[MMM-NextcloudPhotos] Tokenek betöltve.");
+      console.log("[MMM-NextcloudPhotos2] Token load.");
     } catch (err) {
-      console.error("[MMM-NextcloudPhotos] Nem sikerült betölteni a tokeneket:", err.message);
-      console.error("[MMM-NextcloudPhotos] Futtasd a setup_oauth.js scriptet!");
-      this.sendSocketNotification("AUTH_ERROR", "Tokenek nem találhatók. Futtasd: node setup_oauth.js");
+      console.error("[MMM-NextcloudPhotos2] Impossible de charger les tokens :", err.message);
+      console.error("[MMM-NextcloudPhotos2] Exécute le script setup_oauth.js !");
+      this.sendSocketNotification("AUTH_ERROR", "Tokens introuvables. Exécute : node setup_oauth.js");
     }
   },
 
@@ -66,7 +66,7 @@ module.exports = NodeHelper.create({
     try {
       fs.writeFileSync(this.tokenFile, JSON.stringify(this.tokens, null, 2), "utf8");
     } catch (err) {
-      console.error("[MMM-NextcloudPhotos] Token mentési hiba:", err.message);
+      console.error("[MMM-NextcloudPhotos2] Erreur lors de la sauvegarde du token :", err.message);
     }
   },
 
@@ -77,7 +77,7 @@ module.exports = NodeHelper.create({
 
   refreshAccessToken: async function () {
     if (!this.tokens || !this.tokens.refresh_token) {
-      throw new Error("Nincs refresh token. Futtasd újra a setup_oauth.js-t!");
+      throw new Error("Pas de refresh token. Relance le script setup_oauth.js !");
     }
 
     const ncUrl = (this.tokens.nextcloud_url || this.config.nextcloudUrl).replace(/\/+$/, "");
@@ -99,7 +99,7 @@ module.exports = NodeHelper.create({
     this.tokens.expires_at = Date.now() + (response.data.expires_in || 3600) * 1000;
 
     this.saveTokens();
-    console.log("[MMM-NextcloudPhotos] Access token frissítve.");
+    console.log("[MMM-NextcloudPhotos2] Access token refresh OK.");
   },
 
   getValidToken: async function () {
@@ -174,15 +174,15 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
     const contentType = props.getcontenttype || "";
     const rawName = props.displayname || path.basename(decodeURIComponent(href));
     const safeName = this.sanitizeFilename(rawName);
-
+console.log(`[MMM-NextcloudPhotos2] Check SubFolder before ${this.config.albums} `);
     // Si c'est un dossier et qu'on est dans le dossier racine (pas un sous-dossier)
     if (!isSubfolder && props.resourcetype?.collection) {
-      console.log(`[MMM-NextcloudPhotos] Check SubFolder`);
+      console.log(`[MMM-NextcloudPhotos2] Check SubFolder`);
       // Vérifie si le dossier est dans la liste des albums autorisés
       if (this.config.albums && this.config.albums.includes(rawName)) {
         
         const subFolderPath = path.join(baseFolderPath, rawName);
-        console.log(`[MMM-NextcloudPhotos] ${subFolderPath} / ${rawName}`);
+        console.log(`[MMM-NextcloudPhotos2] ${subFolderPath} / ${rawName}`);
         const subFolderPhotos = await this.listPhotosInFolder(subFolderPath, true);
         photos.push(...subFolderPhotos);
       }
@@ -199,7 +199,7 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
     }
   }
 
-  console.log(`[MMM-NextcloudPhotos] ${photos.length} photos trouvées dans /${baseFolderPath}/.`);
+  console.log(`[MMM-NextcloudPhotos2] ${photos.length} photos trouvées dans /${baseFolderPath}/.`);
   return photos;
 },
 
@@ -265,10 +265,10 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
       fs.writeFileSync(localPath, resized);
       const origKB = Math.round(response.data.length / 1024);
       const newKB = Math.round(resized.length / 1024);
-      console.log(`[MMM-NextcloudPhotos] Letöltve+átméretezve: ${photo.name} (${origKB}KB → ${newKB}KB)`);
+      console.log(`[MMM-NextcloudPhotos2] Letöltve+átméretezve: ${photo.name} (${origKB}KB → ${newKB}KB)`);
     } else {
       fs.writeFileSync(localPath, response.data);
-      console.log(`[MMM-NextcloudPhotos] Letöltve: ${photo.name}`);
+      console.log(`[MMM-NextcloudPhotos2] Letöltve: ${photo.name}`);
     }
 
     return { localPath, localName };
@@ -288,13 +288,13 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
 
   doSync: async function (isRetry) {
     if (!this.tokens) {
-      this.sendSocketNotification("AUTH_ERROR", "Nincsenek tokenek.");
+      this.sendSocketNotification("AUTH_ERROR", "No token.");
       return;
     }
 
     try {
       if (!isRetry) {
-        console.log("[MMM-NextcloudPhotos] Szinkronizálás indítása...");
+        console.log("[MMM-NextcloudPhotos2] Synchro beginning...");
         this.retryCount = 0;
       }
 
@@ -307,10 +307,10 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
           localPaths.push({
             name: localName,
             path: localPath,
-            url: `/modules/MMM-NextcloudPhotos/cache/${encodeURIComponent(localName)}`,
+            url: `/modules/MMM-NextcloudPhotos2/cache/${encodeURIComponent(localName)}`,
           });
         } catch (dlErr) {
-          console.error(`[MMM-NextcloudPhotos] Letöltési hiba (${photo.name}):`, dlErr.message);
+          console.error(`[MMM-NextcloudPhotos2] Error (${photo.name}):`, dlErr.message);
         }
       }
 
@@ -324,16 +324,16 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
           const stat = fs.lstatSync(filePath);
           if (stat.isFile()) {
             fs.unlinkSync(filePath);
-            console.log(`[MMM-NextcloudPhotos] Törölve a cache-ből: ${file}`);
+            console.log(`[MMM-NextcloudPhotos2] Erase from cache: ${file}`);
           }
         }
       }
 
       this.photoList = localPaths;
       this.sendSocketNotification("PHOTOS_UPDATED", this.photoList);
-      console.log(`[MMM-NextcloudPhotos] Szinkronizálás kész. ${localPaths.length} kép elérhető.`);
+      console.log(`[MMM-NextcloudPhotos2] Update ending. ${localPaths.length} pictures available.`);
     } catch (err) {
-      console.error("[MMM-NextcloudPhotos] Szinkronizálási hiba:", err.message);
+      console.error("[MMM-NextcloudPhotos2] Synchro error:", err.message);
 
       if (err.response?.status === 401 && this.retryCount < MAX_RETRY_COUNT) {
         this.retryCount++;
@@ -341,7 +341,7 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
           await this.refreshAccessToken();
           await this.doSync(true);
         } catch (refreshErr) {
-          this.sendSocketNotification("AUTH_ERROR", "Token frissítés sikertelen. Futtasd újra: node setup_oauth.js");
+          this.sendSocketNotification("AUTH_ERROR", "Echec du rafraîchissement du token. Relance : node setup_oauth.js");
         }
       }
     }

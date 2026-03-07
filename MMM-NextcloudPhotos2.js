@@ -31,7 +31,7 @@ Module.register("MMM-NextcloudPhotos2", {
   layers: [],
 
   start: function () {
-    Log.info("[MMM-NextcloudPhotos] Module loading...");
+    Log.info("[MMM-NextcloudPhotos2] Module loading...");
     this.sendSocketNotification("SET_CONFIG", this.config);
   },
 
@@ -83,7 +83,7 @@ Module.register("MMM-NextcloudPhotos2", {
 
   socketNotificationReceived: function (notification, payload) {
     if (notification === "PHOTOS_UPDATED") {
-      Log.info("[MMM-NextcloudPhotos] " + payload.length + " photos update.");
+      Log.info("[MMM-NextcloudPhotos2] " + payload.length + " photos update.");
       this.errorMessage = null;
       this.photos = payload;
 
@@ -97,7 +97,7 @@ Module.register("MMM-NextcloudPhotos2", {
     }
 
     if (notification === "AUTH_ERROR") {
-      Log.error("[MMM-NextcloudPhotos] Auth error: " + payload);
+      Log.error("[MMM-NextcloudPhotos2] Auth error: " + payload);
       this.errorMessage = payload;
       this.updateDom();
     }
@@ -120,7 +120,7 @@ Module.register("MMM-NextcloudPhotos2", {
 
   showNextPhoto: function () {
     if (this.photos.length === 0 || this.layers.length < 2) {
-      Log.warn("[MMM-NextcloudPhotos] showNextPhoto: zero photo.");
+      Log.warn("[MMM-NextcloudPhotos2] showNextPhoto: zero photo.");
       return;
     }
 
@@ -158,10 +158,10 @@ Module.register("MMM-NextcloudPhotos2", {
       img.onerror = null;
       self._preloadImg = null;
 
-      Log.info("[MMM-NextcloudPhotos] Show picture : " + photo.name);
+      Log.info("[MMM-NextcloudPhotos2] Show picture : " + photo.name);
     };
     img.onerror = function () {
-      Log.error("[MMM-NextcloudPhotos] Error from loading : " + photo.url);
+      Log.error("[MMM-NextcloudPhotos2] Error from loading : " + photo.url);
       img.onload = null;
       img.onerror = null;
       self._preloadImg = null;
