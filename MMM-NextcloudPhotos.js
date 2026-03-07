@@ -1,4 +1,4 @@
-Module.register("MMM-NextcloudPhotos", {
+Module.register("MMM-NextcloudPhotos2", {
   defaults: {
     // Nextcloud settings
     nextcloudUrl: "",
