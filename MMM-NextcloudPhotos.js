@@ -20,6 +20,7 @@ Module.register("MMM-NextcloudPhotos", {
     maxWidth: 1920,                  // Max image width in pixels
     maxHeight: 1080,                 // Max image height in pixels
     imageQuality: 80,               // JPEG quality (1-100)
+    albums : ["Anniversaire 1 an", "Montreux 2023"],
   },
 
   photos: [],
@@ -30,7 +31,7 @@ Module.register("MMM-NextcloudPhotos", {
   layers: [],
 
   start: function () {
-    Log.info("[MMM-NextcloudPhotos] Modul indítása...");
+    Log.info("[MMM-NextcloudPhotos] Module loading...");
     this.sendSocketNotification("SET_CONFIG", this.config);
   },
 
@@ -60,7 +61,7 @@ Module.register("MMM-NextcloudPhotos", {
       var loadingDiv = document.createElement("div");
       loadingDiv.className = "mmm-ncp-loading";
       loadingDiv.style.cssText = "display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:rgba(255,255,255,0.3);font-size:1.2rem;";
-      loadingDiv.textContent = "Képek betöltése...";
+      loadingDiv.textContent = "Loading...";
       wrapper.appendChild(loadingDiv);
       return wrapper;
     }
@@ -82,7 +83,7 @@ Module.register("MMM-NextcloudPhotos", {
 
   socketNotificationReceived: function (notification, payload) {
     if (notification === "PHOTOS_UPDATED") {
-      Log.info("[MMM-NextcloudPhotos] " + payload.length + " kép frissítve.");
+      Log.info("[MMM-NextcloudPhotos] " + payload.length + " photos update.");
       this.errorMessage = null;
       this.photos = payload;
 
@@ -96,7 +97,7 @@ Module.register("MMM-NextcloudPhotos", {
     }
 
     if (notification === "AUTH_ERROR") {
-      Log.error("[MMM-NextcloudPhotos] Auth hiba: " + payload);
+      Log.error("[MMM-NextcloudPhotos] Auth error: " + payload);
       this.errorMessage = payload;
       this.updateDom();
     }
@@ -119,7 +120,7 @@ Module.register("MMM-NextcloudPhotos", {
 
   showNextPhoto: function () {
     if (this.photos.length === 0 || this.layers.length < 2) {
-      Log.warn("[MMM-NextcloudPhotos] showNextPhoto: nincs kép vagy nincsenek layer-ek.");
+      Log.warn("[MMM-NextcloudPhotos] showNextPhoto: zero photo.");
       return;
     }
 
@@ -157,10 +158,10 @@ Module.register("MMM-NextcloudPhotos", {
       img.onerror = null;
       self._preloadImg = null;
 
-      Log.info("[MMM-NextcloudPhotos] Kép megjelenítve: " + photo.name);
+      Log.info("[MMM-NextcloudPhotos] Show picture : " + photo.name);
     };
     img.onerror = function () {
-      Log.error("[MMM-NextcloudPhotos] Kép betöltési hiba: " + photo.url);
+      Log.error("[MMM-NextcloudPhotos] Error from loading : " + photo.url);
       img.onload = null;
       img.onerror = null;
       self._preloadImg = null;

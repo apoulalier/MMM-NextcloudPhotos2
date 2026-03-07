@@ -123,72 +123,83 @@ module.exports = NodeHelper.create({
   },
 
   // ─── Nextcloud API - File Listing ─────────────────────────────
+listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
+  const token = await this.getValidToken();
+  const baseFolderPath = folderPath || this.config.folder || "mirror";
+  const username = this.config.username || (this.tokens && this.tokens.username);
+  const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
 
-  listPhotosInFolder: async function () {
-    const token = await this.getValidToken();
-    const folderPath = this.config.folder || "mirror";
-    const username = this.config.username || (this.tokens && this.tokens.username);
-    const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
+  const davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${encodeURIComponent(baseFolderPath)}/`;
 
-    const davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${encodeURIComponent(folderPath)}/`;
+  const propfindBody = `<?xml version="1.0" encoding="UTF-8"?>
+  <d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+    <d:prop>
+      <d:displayname/>
+      <d:getcontenttype/>
+      <d:getcontentlength/>
+      <d:getlastmodified/>
+      <oc:fileid/>
+      <d:resourcetype/>
+    </d:prop>
+  </d:propfind>`;
 
-    const propfindBody = `<?xml version="1.0" encoding="UTF-8"?>
-<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
-  <d:prop>
-    <d:displayname/>
-    <d:getcontenttype/>
-    <d:getcontentlength/>
-    <d:getlastmodified/>
-    <oc:fileid/>
-  </d:prop>
-</d:propfind>`;
+  const response = await axios({
+    method: "PROPFIND",
+    url: davUrl,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/xml",
+      Depth: "1",
+    },
+    data: propfindBody,
+    timeout: AXIOS_TIMEOUT,
+  });
 
-    const response = await axios({
-      method: "PROPFIND",
-      url: davUrl,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/xml",
-        Depth: "1",
-      },
-      data: propfindBody,
-      timeout: AXIOS_TIMEOUT,
-    });
+  const parsed = await xml2js.parseStringPromise(response.data, {
+    explicitArray: false,
+    tagNameProcessors: [xml2js.processors.stripPrefix],
+  });
 
-    const parsed = await xml2js.parseStringPromise(response.data, {
-      explicitArray: false,
-      tagNameProcessors: [xml2js.processors.stripPrefix],
-    });
+  const responses = parsed.multistatus.response;
+  const items = Array.isArray(responses) ? responses : [responses];
 
-    const responses = parsed.multistatus.response;
-    const items = Array.isArray(responses) ? responses : [responses];
+  const imageExtensions = /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i;
+  const photos = [];
 
-    const imageExtensions = /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i;
-    const photos = [];
+  for (const item of items) {
+    const href = item.href;
+    const props = item.propstat?.prop || item.propstat?.[0]?.prop;
+    if (!props) continue;
 
-    for (const item of items) {
-      const href = item.href;
-      const props = item.propstat?.prop || item.propstat?.[0]?.prop;
-      if (!props) continue;
+    const contentType = props.getcontenttype || "";
+    const rawName = props.displayname || path.basename(decodeURIComponent(href));
+    const safeName = this.sanitizeFilename(rawName);
 
-      const contentType = props.getcontenttype || "";
-      const rawName = props.displayname || path.basename(decodeURIComponent(href));
-      const safeName = this.sanitizeFilename(rawName);
-
-      if (contentType.startsWith("image/") || imageExtensions.test(safeName)) {
-        photos.push({
-          name: safeName,
-          href: href,
-          contentType: contentType,
-          size: parseInt(props.getcontentlength, 10) || 0,
-          lastModified: props.getlastmodified || "",
-        });
+    // Si c'est un dossier et qu'on est dans le dossier racine (pas un sous-dossier)
+    if (!isSubfolder && props.resourcetype?.collection) {
+      // Vérifie si le dossier est dans la liste des albums autorisés
+      if (this.config.albums && this.config.albums.includes(rawName)) {
+        const subFolderPath = path.join(baseFolderPath, rawName);
+        const subFolderPhotos = await this.listPhotosInFolder(subFolderPath, true);
+        photos.push(...subFolderPhotos);
       }
     }
+    // Si c'est une image, on l'ajoute à la liste
+    else if (contentType.startsWith("image/") || imageExtensions.test(safeName)) {
+      photos.push({
+        name: safeName,
+        href: href,
+        contentType: contentType,
+        size: parseInt(props.getcontentlength, 10) || 0,
+        lastModified: props.getlastmodified || "",
+      });
+    }
+  }
 
-    console.log(`[MMM-NextcloudPhotos] ${photos.length} kép találva a /${folderPath}/ mappában.`);
-    return photos;
-  },
+  console.log(`[MMM-NextcloudPhotos] ${photos.length} photos trouvées dans /${baseFolderPath}/.`);
+  return photos;
+},
+
 
   // ─── Nextcloud API - File Download ────────────────────────────
 
