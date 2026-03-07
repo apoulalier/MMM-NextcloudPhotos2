@@ -1,5 +1,5 @@
 {
-  "name": "mmm-nextcloudphotos",
+  "name": "mmm-nextcloudphotos2",
   "version": "1.0.0",
   "description": "MagicMirror² module to display photos from Nextcloud as fullscreen background",
   "main": "node_helper.js",
