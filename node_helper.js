@@ -177,9 +177,12 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
 
     // Si c'est un dossier et qu'on est dans le dossier racine (pas un sous-dossier)
     if (!isSubfolder && props.resourcetype?.collection) {
+      console.log(`[MMM-NextcloudPhotos] Check SubFolder`);
       // Vérifie si le dossier est dans la liste des albums autorisés
       if (this.config.albums && this.config.albums.includes(rawName)) {
+        
         const subFolderPath = path.join(baseFolderPath, rawName);
+        console.log(`[MMM-NextcloudPhotos] ${subFolderPath} / ${rawName}`);
         const subFolderPhotos = await this.listPhotosInFolder(subFolderPath, true);
         photos.push(...subFolderPhotos);
       }
