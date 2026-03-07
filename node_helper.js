@@ -130,6 +130,7 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
   const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
 
   const davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${encodeURIComponent(baseFolderPath)}/`;
+  if(isSubfolder) console.log(`[MMM-NextcloudPhotos2] ${davUrl} / ${rawName}`);
 
   const propfindBody = `<?xml version="1.0" encoding="UTF-8"?>
   <d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
@@ -174,19 +175,13 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
     const contentType = props.getcontenttype || "";
     const rawName = props.displayname || path.basename(decodeURIComponent(href));
     const safeName = this.sanitizeFilename(rawName);
-console.log(`[MMM-NextcloudPhotos2] Check SubFolder before ${this.config.albums} ${rawName}`);
-    // Si c'est un dossier et qu'on est dans le dossier racine (pas un sous-dossier)
-      if (!isSubfolder && props.resourcetype && Object.keys(props.resourcetype).includes("collection")) {
 
-      console.log(`[MMM-NextcloudPhotos2] Check SubFolder`);
-      // Vérifie si le dossier est dans la liste des albums autorisés
-      if (this.config.albums && this.config.albums.includes(rawName)) {
-        
+    // Si c'est un dossier et qu'on est dans le dossier racine (pas un sous-dossier)
+    // Vérifie si le dossier est dans la liste des albums autorisés
+      if (!isSubfolder && props.resourcetype && Object.keys(props.resourcetype).includes("collection") && this.config.albums && this.config.albums.includes(rawName)) {
         const subFolderPath = path.join(baseFolderPath, rawName);
-        console.log(`[MMM-NextcloudPhotos2] ${subFolderPath} / ${rawName}`);
         const subFolderPhotos = await this.listPhotosInFolder(subFolderPath, true);
         photos.push(...subFolderPhotos);
-      }
     }
     // Si c'est une image, on l'ajoute à la liste
     else if (contentType.startsWith("image/") || imageExtensions.test(safeName)) {
