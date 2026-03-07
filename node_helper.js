@@ -262,10 +262,10 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
       fs.writeFileSync(localPath, resized);
       const origKB = Math.round(response.data.length / 1024);
       const newKB = Math.round(resized.length / 1024);
-      console.log(`[MMM-NextcloudPhotos2] Letöltve+átméretezve: ${photo.name} (${origKB}KB → ${newKB}KB)`);
+      console.log(`[MMM-NextcloudPhotos2] Téléchargé+redimensionné : ${photo.name} (${origKB}KB → ${newKB}KB)`);
     } else {
       fs.writeFileSync(localPath, response.data);
-      console.log(`[MMM-NextcloudPhotos2] Letöltve: ${photo.name}`);
+      console.log(`[MMM-NextcloudPhotos2] Téléchargé: ${photo.name}`);
     }
 
     return { localPath, localName };
