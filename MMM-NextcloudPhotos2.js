@@ -21,6 +21,8 @@ Module.register("MMM-NextcloudPhotos2", {
     maxHeight: 1080,                 // Max image height in pixels
     imageQuality: 80,               // JPEG quality (1-100)
     albums : ["Anniversaire 1 an", "Montreux 2023"],
+    timeFormat: "YYYY/MM/DD HH:mm",
+    autoInfoPosition: false,
   },
 
   photos: [],
@@ -44,6 +46,9 @@ Module.register("MMM-NextcloudPhotos2", {
     wrapper.className = "mmm-ncp-wrapper";
     let back = document.createElement("div");
     back.id = "GPHOTO_BACK";
+    let info = document.createElement("div");
+    info.id = "GPHOTO_INFO";
+    info.innerHTML = "Loading...";
     // Inline styles as fallback in case CSS doesn't load
     //wrapper.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;overflow:hidden;background-color:#000;";
 
@@ -80,6 +85,7 @@ Module.register("MMM-NextcloudPhotos2", {
       this.layers.push(layer);
     }
     wrapper.appendChild(back);
+    wrapper.appendChild(info);
 
     return wrapper;
   },
@@ -162,6 +168,47 @@ Module.register("MMM-NextcloudPhotos2", {
       img.onload = null;
       img.onerror = null;
       self._preloadImg = null;
+
+      const info = document.getElementById("GPHOTO_INFO");
+    const album = Array.isArray(this.albums) ? this.albums.find((a) => a.id === target._albumId) : { id: -1, title: '' };
+    if (this.config.autoInfoPosition) {
+      let op = (album, target) => {
+        let now = new Date();
+        let q = Math.floor(now.getMinutes() / 15);
+        let r = [
+          [0, "none", "none", 0],
+          ["none", "none", 0, 0],
+          ["none", 0, 0, "none"],
+          [0, 0, "none", "none"],
+        ];
+        return r[q];
+      };
+      if (typeof this.config.autoInfoPosition === "function") {
+        op = this.config.autoInfoPosition;
+      }
+      const [top, left, bottom, right] = op(album, target);
+      info.style.setProperty("--top", top);
+      info.style.setProperty("--left", left);
+      info.style.setProperty("--bottom", bottom);
+      info.style.setProperty("--right", right);
+    }
+    info.innerHTML = "";
+    let albumCover = document.createElement("div");
+    albumCover.classList.add("albumCover");
+    albumCover.style.backgroundImage = `url(modules/MMM-NextcloudPhotos2/cache/${album.id})`;
+    let albumTitle = document.createElement("div");
+    albumTitle.classList.add("albumTitle");
+    albumTitle.innerHTML = album.title;
+    let photoTime = document.createElement("div");
+    photoTime.classList.add("photoTime");
+    photoTime.innerHTML = this.config.timeFormat === "relative" ? moment(target.mediaMetadata.creationTime).fromNow() : moment(target.mediaMetadata.creationTime).format(this.config.timeFormat);
+    let infoText = document.createElement("div");
+    infoText.classList.add("infoText");
+
+    info.appendChild(albumCover);
+    infoText.appendChild(albumTitle);
+    infoText.appendChild(photoTime);
+    info.appendChild(infoText);
 
       Log.info("[MMM-NextcloudPhotos2] Show picture : " + photo.name);
     };

@@ -71,3 +71,45 @@ body {
   padding: 20px;
   text-align: center;
 }
+
+#GPHOTO_INFO {
+  position:absolute;
+  top: var(--top);
+  left: var(--left);
+  bottom: var(--bottom);
+  right: var(--right);
+  margin:10px;
+  background-color: rgba(0,0,0,0.5);
+  padding: 10px;
+  border-radius: 36px;
+  line-height: 100%;
+  text-align:left;
+}
+
+#GPHOTO_INFO .albumCover {
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  background-size:cover;
+  background-repeat:no-repeat;
+  background-position:center;
+  float:left;
+}
+
+#GPHOTO_INFO .albumTitle {
+  color:#FDD;
+}
+
+#GPHOTO_INFO .photoTime {
+  color:#DFD;
+}
+
+#GPHOTO_INFO .infoText {
+  float:right;
+  margin-left: 12px;
+  padding-right: 12px;
+  padding-top:6px;
+  font-size:18px;
+  line-height:100%;
+  color:#FFF;
+}
