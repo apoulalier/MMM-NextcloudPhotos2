@@ -17,7 +17,7 @@ try {
   sharp = null;
 }
 
-const AXIOS_TIMEOUT = 30000;
+const AXIOS_TIMEOUT = 60000;
 const MAX_RETRY_COUNT = 1;
 
 module.exports = NodeHelper.create({
@@ -193,13 +193,41 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
         contentType: contentType,
         size: parseInt(props.getcontentlength, 10) || 0,
         lastModified: props.getlastmodified || "",
-        folderName: baseFolderPath, // Nom du dossier parent
       });
     }
   }
 
   console.log(`[MMM-NextcloudPhotos2] ${photos.length} photos trouvées dans /${baseFolderPath}/.`);
   return photos;
+},
+
+/**
+ * Convertit des coordonnées GPS en ville et pays via une API de géocodage.
+ * @param {number} latitude - Latitude
+ * @param {number} longitude - Longitude
+ * @returns {Promise<{city: string, country: string}|null>} - Ville et pays, ou null en cas d'erreur
+ */
+geocodeCoordinates: async function (latitude, longitude) {
+  try {
+    // Utilise Nominatim (OpenStreetMap) pour le géocodage inverse
+    const geoApiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
+    const geoResponse = await axios.get(geoApiUrl, {
+      timeout: AXIOS_TIMEOUT,
+      headers: {
+        'User-Agent': 'MMM-NextcloudPhotos/1.0' // Obligatoire pour Nominatim
+      }
+    });
+
+    // Extrait la ville et le pays
+    const address = geoResponse.data.address;
+    return {
+      city: address.city || address.town || address.village || address.hamlet,
+      country: address.country,
+    };
+  } catch (e) {
+    console.warn(`[MMM-NextcloudPhotos2] Impossible de géocoder les coordonnées (${latitude}, ${longitude}): ${e.message}`);
+    return null;
+  }
 },
 
 // ─── Nextcloud API - File Download ────────────────────────────
@@ -219,6 +247,7 @@ downloadPhoto: async function (photo) {
   const baseName = path.parse(photo.name).name;
   const localName = sharp ? baseName + ".jpg" : photo.name;
   const localPath = path.join(this.cacheDir, localName);
+  const folderName = photo.folderName;
 
   // Vérification du chemin
   const resolvedPath = path.resolve(localPath);
@@ -227,17 +256,50 @@ downloadPhoto: async function (photo) {
     throw new Error(`Invalid filename, path traversal attempt: ${localName}`);
   }
 
-  // Skip if already cached
+  // Variables pour les métadonnées
+  let exifData = null;
+  let location = null;
+
+  // Si le fichier est déjà en cache
   if (fs.existsSync(localPath)) {
     const stat = fs.statSync(localPath);
     const remoteDate = new Date(photo.lastModified).getTime();
     const localDate = stat.mtimeMs;
-    if (localDate >= remoteDate && stat.size > 0) {
-      return { localPath, localName };
+
+    // Lit les métadonnées depuis le fichier local avec sharp
+    try {
+      const image = sharp(localPath);
+      const metadata = await image.metadata();
+
+      exifData = {
+        dateTaken: metadata.exif?.DateTimeOriginal,
+        latitude: metadata.exif?.GPSLatitude,
+        longitude: metadata.exif?.GPSLongitude,
+      };
+
+      // Géocodage si des coordonnées GPS sont disponibles
+      if (exifData.latitude && exifData.longitude) {
+        location = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
+      }
+
+      // Si le fichier local est à jour, on le retourne
+      if (localDate >= remoteDate && stat.size > 0) {
+        return {
+          localPath,
+          localName,
+          folderName,
+          exifData: {
+            dateTaken: exifData.dateTaken,
+            location: location,
+          },
+        };
+      }
+    } catch (e) {
+      console.warn(`[MMM-NextcloudPhotos2] Impossible de lire les métadonnées EXIF locales pour ${photo.name}: ${e.message}`);
     }
   }
 
-  // Téléchargement
+  // Sinon téléchargement nécessaire
   const response = await axios.get(downloadUrl, {
     headers: { Authorization: `Bearer ${token}` },
     responseType: "arraybuffer",
@@ -245,33 +307,20 @@ downloadPhoto: async function (photo) {
     maxRedirects: 0,
   });
 
-  // Extraction des métadonnées EXIF
-  let exifData = null;
-  try {
-    exifData = await exifr.parse(response.data, {
-      ifd0: true,
-      exif: true,
-      gps: true,
-      iptc: false,
-      xmp: false,
-    });
-  } catch (e) {
-    console.warn(`[MMM-NextcloudPhotos2] Impossible de lire les métadonnées EXIF pour ${photo.name}: ${e.message}`);
-  }
+  // Crée une instance sharp pour extraire les métadonnées
+  const image = sharp(response.data);
+  const metadata = await image.metadata();
+
+  // Extrait les métadonnées EXIF
+  exifData = {
+    dateTaken: metadata.exif?.DateTimeOriginal,
+    latitude: metadata.exif?.GPSLatitude,
+    longitude: metadata.exif?.GPSLongitude,
+  };
 
   // Géocodage si des coordonnées GPS sont disponibles
-  let location = null;
   if (exifData?.latitude && exifData?.longitude) {
-    try {
-      const geoApiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${exifData.latitude}&lon=${exifData.longitude}`;
-      const geoResponse = await axios.get(geoApiUrl, { timeout: AXIOS_TIMEOUT });
-      location = {
-        city: geoResponse.data.address.city || geoResponse.data.address.town || geoResponse.data.address.village,
-        country: geoResponse.data.address.country,
-      };
-    } catch (e) {
-      console.warn(`[MMM-NextcloudPhotos2] Impossible de géocoder les coordonnées pour ${photo.name}: ${e.message}`);
-    }
+    location = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
   }
 
   // Redimensionnement et compression
@@ -280,7 +329,7 @@ downloadPhoto: async function (photo) {
     const maxHeight = this.config.maxHeight || 1080;
     const quality = this.config.imageQuality || 80;
 
-    const resized = await sharp(response.data)
+    const resized = await image
       .rotate() // Auto-rotation basée sur les EXIF
       .resize(maxWidth, maxHeight, {
         fit: "inside",
@@ -298,18 +347,18 @@ downloadPhoto: async function (photo) {
     console.log(`[MMM-NextcloudPhotos2] Téléchargé: ${photo.name}`);
   }
 
-  let folderName = photo.folderName;
   // Retourne les informations enrichies
   return {
     localPath,
     localName,
     folderName,
     exifData: {
-      dateTaken: exifData?.DateTimeOriginal,
+      dateTaken: exifData.dateTaken,
       location: location,
     },
   };
 },
+
   // ─── Sync Logic ───────────────────────────────────────────────
 
   startSync: function () {
@@ -386,3 +435,4 @@ downloadPhoto: async function (photo) {
     }
   },
 });
+

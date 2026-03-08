@@ -20,8 +20,8 @@ Module.register("MMM-NextcloudPhotos2", {
     maxWidth: 1920,                  // Max image width in pixels
     maxHeight: 1080,                 // Max image height in pixels
     imageQuality: 80,               // JPEG quality (1-100)
-    albums : ["Anniversaire 1 an", "Montreux 2023"],
-    timeFormat: "YYYY/MM/DD HH:mm",
+    albums: ["Anniversaire 1 an", "Montreux 2023", "Danemark 2024"],
+    timeFormat: "DD/MM/YYYY HH:mm",
   },
 
   photos: [],
@@ -169,27 +169,27 @@ Module.register("MMM-NextcloudPhotos2", {
       self._preloadImg = null;
 
       const info = document.getElementById("GPHOTO_INFO");
-    info.innerHTML = "";
-    let albumTitle = document.createElement("div");
-    albumTitle.classList.add("albumTitle");
-    albumTitle.innerHTML = photo.folderName;
-    let photoTime = document.createElement("div");
-    photoTime.classList.add("photoTime");
-    photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(photo.dateTaken).fromNow() : moment(photo.dateTaken).format(self.config.timeFormat);
-    let infoText = document.createElement("div");
-    infoText.classList.add("infoText");
-    let fileLocation = document.createElement("div");
-    fileLocation.classList.add("fileLocation");
-    fileLocation.innerHTML = photo.location;
-    let fileLocation2 = document.createElement("div");
-    fileLocation2.classList.add("fileLocation");
-    fileLocation2.innerHTML = photo.path;
+      info.innerHTML = "";
+      let albumTitle = document.createElement("div");
+      albumTitle.classList.add("albumTitle");
+      albumTitle.innerHTML = photo.folderName;
+      let photoTime = document.createElement("div");
+      photoTime.classList.add("photoTime");
+      photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(photo.dateTaken).fromNow() : moment(photo.dateTaken).format(self.config.timeFormat);
+      let infoText = document.createElement("div");
+      infoText.classList.add("infoText");
+      let fileLocation = document.createElement("div");
+      fileLocation.classList.add("fileLocation");
+      fileLocation.innerHTML = photo.location;
+      let fileLocation2 = document.createElement("div");
+      fileLocation2.classList.add("fileLocation");
+      fileLocation2.innerHTML = photo.path;
 
-    infoText.appendChild(albumTitle);
-    infoText.appendChild(photoTime);
-    infoText.appendChild(fileLocation);
-    infoText.appendChild(fileLocation2);
-    info.appendChild(infoText);
+      infoText.appendChild(albumTitle);
+      infoText.appendChild(photoTime);
+      infoText.appendChild(fileLocation);
+      infoText.appendChild(fileLocation2);
+      info.appendChild(infoText);
 
       Log.info("[MMM-NextcloudPhotos2] Show picture : " + photo.name);
     };
