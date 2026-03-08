@@ -170,8 +170,8 @@ Module.register("MMM-NextcloudPhotos2", {
       self._preloadImg = null;
 
       const info = document.getElementById("GPHOTO_INFO");
-    const album = Array.isArray(this.albums) ? this.albums.find((a) => a.id === target._albumId) : { id: -1, title: '' };
-    if (this.config.autoInfoPosition) {
+    const album = Array.isArray(self.albums) ? self.albums.find((a) => a.id === target._albumId) : { id: -1, title: '' };
+    if (self.config.autoInfoPosition) {
       let op = (album, target) => {
         let now = new Date();
         let q = Math.floor(now.getMinutes() / 15);
@@ -183,8 +183,8 @@ Module.register("MMM-NextcloudPhotos2", {
         ];
         return r[q];
       };
-      if (typeof this.config.autoInfoPosition === "function") {
-        op = this.config.autoInfoPosition;
+      if (typeof self.config.autoInfoPosition === "function") {
+        op = self.config.autoInfoPosition;
       }
       const [top, left, bottom, right] = op(album, target);
       info.style.setProperty("--top", top);
@@ -201,7 +201,7 @@ Module.register("MMM-NextcloudPhotos2", {
     albumTitle.innerHTML = album.title;
     let photoTime = document.createElement("div");
     photoTime.classList.add("photoTime");
-    photoTime.innerHTML = this.config.timeFormat === "relative" ? moment(target.mediaMetadata.creationTime).fromNow() : moment(target.mediaMetadata.creationTime).format(this.config.timeFormat);
+    photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(target.mediaMetadata.creationTime).fromNow() : moment(target.mediaMetadata.creationTime).format(self.config.timeFormat);
     let infoText = document.createElement("div");
     infoText.classList.add("infoText");
 
