@@ -36,7 +36,7 @@ Module.register("MMM-NextcloudPhotos2", {
   },
 
   getStyles: function () {
-    return ["css/MMM-NextcloudPhotos.css"];
+    return ["MMM-NextcloudPhotos2.css"];
   },
 
   getDom: function () {
