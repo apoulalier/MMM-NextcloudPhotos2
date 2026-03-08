@@ -20,7 +20,7 @@ Module.register("MMM-NextcloudPhotos2", {
     maxWidth: 1920,                  // Max image width in pixels
     maxHeight: 1080,                 // Max image height in pixels
     imageQuality: 80,               // JPEG quality (1-100)
-    albums: ["Anniversaire 1 an", "Danemark 2024"],
+    albums: ["TESTAX"],
     timeFormat: "DD/MM/YYYY HH:mm",
   },
 
