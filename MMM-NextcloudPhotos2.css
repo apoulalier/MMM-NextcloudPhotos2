@@ -10,8 +10,8 @@ body {
   overflow: hidden;
   background-color: #000;
   position:relative;
-  min-width: 300px;
-  min-height:300px;
+  min-width: 600px;
+  min-height:600px;
 }
 
 /* Two image layers for smooth crossfade */
@@ -30,6 +30,18 @@ body {
 
 .mmm-ncp-layer.mmm-ncp-visible {
   opacity: 1;
+}
+
+#GPHOTO_BACK {
+  background-size:cover;
+  background-repeat:no-repeat;
+  background-position:center;
+  position: absolute;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+  filter: blur(10px) sepia(80%) brightness(40%);
 }
 
 /* Loading state */

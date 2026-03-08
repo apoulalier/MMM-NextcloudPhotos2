@@ -42,6 +42,8 @@ Module.register("MMM-NextcloudPhotos2", {
   getDom: function () {
     var wrapper = document.createElement("div");
     wrapper.className = "mmm-ncp-wrapper";
+    let back = document.createElement("div");
+    back.id = "GPHOTO_BACK";
     // Inline styles as fallback in case CSS doesn't load
     //wrapper.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;overflow:hidden;background-color:#000;";
 
@@ -77,6 +79,7 @@ Module.register("MMM-NextcloudPhotos2", {
       wrapper.appendChild(layer);
       this.layers.push(layer);
     }
+    wrapper.appendChild(back);
 
     return wrapper;
   },
@@ -150,6 +153,8 @@ Module.register("MMM-NextcloudPhotos2", {
       // Crossfade using inline opacity (avoids CSS class vs inline style conflict)
       self.layers[nextLayer].style.opacity = String(self.config.opacity);
       self.layers[self.activeLayer].style.opacity = "0";
+      let back = document.getElementById("GPHOTO_BACK");
+      back.style.backgroundImage = "url('" + photo.url + "')";
 
       self.activeLayer = nextLayer;
 
