@@ -43,7 +43,7 @@ Module.register("MMM-NextcloudPhotos2", {
     var wrapper = document.createElement("div");
     wrapper.className = "mmm-ncp-wrapper";
     // Inline styles as fallback in case CSS doesn't load
-    wrapper.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;overflow:hidden;background-color:#000;";
+    //wrapper.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;overflow:hidden;background-color:#000;";
 
     // Make body background transparent so our wrapper shows through
     document.body.style.background = "transparent";
@@ -51,7 +51,7 @@ Module.register("MMM-NextcloudPhotos2", {
     if (this.errorMessage) {
       var errorDiv = document.createElement("div");
       errorDiv.className = "mmm-ncp-error";
-      errorDiv.style.cssText = "display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:rgba(255,100,100,0.6);font-size:1rem;";
+      //errorDiv.style.cssText = "display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:rgba(255,100,100,0.6);font-size:1rem;";
       errorDiv.textContent = this.errorMessage;
       wrapper.appendChild(errorDiv);
       return wrapper;
@@ -60,7 +60,7 @@ Module.register("MMM-NextcloudPhotos2", {
     if (this.photos.length === 0) {
       var loadingDiv = document.createElement("div");
       loadingDiv.className = "mmm-ncp-loading";
-      loadingDiv.style.cssText = "display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:rgba(255,255,255,0.3);font-size:1.2rem;";
+      //loadingDiv.style.cssText = "display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:rgba(255,255,255,0.3);font-size:1.2rem;";
       loadingDiv.textContent = "Loading...";
       wrapper.appendChild(loadingDiv);
       return wrapper;
@@ -71,9 +71,9 @@ Module.register("MMM-NextcloudPhotos2", {
     for (var i = 0; i < 2; i++) {
       var layer = document.createElement("div");
       layer.className = "mmm-ncp-layer mmm-ncp-layer-" + i;
-      layer.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;" +
-        "background-position:center center;background-repeat:no-repeat;background-size:cover;" +
-        "opacity:0;transition:opacity " + this.config.transitionDuration + "ms ease-in-out;";
+      //layer.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;" +
+      //  "background-position:center center;background-repeat:no-repeat;background-size:cover;" +
+      //  "opacity:0;transition:opacity " + this.config.transitionDuration + "ms ease-in-out;";
       wrapper.appendChild(layer);
       this.layers.push(layer);
     }
