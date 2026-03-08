@@ -266,7 +266,6 @@ downloadPhoto: async function (photo) {
 
     // Lit les métadonnées depuis le fichier local avec sharp
     try {
-      const image = sharp(localPath);
       const metadata = await exifr.parse(localPath, { gps: true });
 
       exifData = {
@@ -279,6 +278,9 @@ downloadPhoto: async function (photo) {
       if (exifData.latitude && exifData.longitude) {
         location = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
       }
+
+      console.log(`[DEBUG] IAlorspour ${exifData.dateTaken}: ${exifData.latitude}`);
+      console.log("[DEBUG] Payload metadata (downloadPhoto):", metadata);
 
       // Si le fichier local est à jour, on le retourne
       if (localDate >= remoteDate && stat.size > 0) {
@@ -394,7 +396,6 @@ downloadPhoto: async function (photo) {
             dateTaken: exifData?.dateTaken, // Date de prise de vue
             location: exifData?.location,  // Ville et pays
           });
-          console.log("[DEBUG] exifData?.dateTaken:", exifData?.dateTaken);
         } catch (dlErr) {
           console.error(`[MMM-NextcloudPhotos2] Error (${photo.name}):`, dlErr.message);
         }
