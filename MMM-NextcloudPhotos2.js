@@ -181,10 +181,14 @@ Module.register("MMM-NextcloudPhotos2", {
     let fileLocation = document.createElement("div");
     fileLocation.classList.add("fileLocation");
     fileLocation.innerHTML = photo.location;
+    let fileLocation2 = document.createElement("div");
+    fileLocation2.classList.add("fileLocation");
+    fileLocation2.innerHTML = photo.path;
 
     infoText.appendChild(albumTitle);
     infoText.appendChild(photoTime);
     infoText.appendChild(fileLocation);
+    infoText.appendChild(fileLocation2);
     info.appendChild(infoText);
 
       Log.info("[MMM-NextcloudPhotos2] Show picture : " + photo.name);

@@ -83,17 +83,8 @@ body {
   padding: 10px;
   border-radius: 36px;
   line-height: 100%;
-  text-align:left;
-}
-
-#GPHOTO_INFO .albumCover {
-  width:48px;
-  height:48px;
-  border-radius:50%;
-  background-size:cover;
-  background-repeat:no-repeat;
-  background-position:center;
-  float:left;
+  text-align:right;
+  z-index:3;
 }
 
 #GPHOTO_INFO .albumTitle {

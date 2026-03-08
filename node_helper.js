@@ -298,10 +298,12 @@ downloadPhoto: async function (photo) {
     console.log(`[MMM-NextcloudPhotos2] Téléchargé: ${photo.name}`);
   }
 
+  let folderName = photo.folderName;
   // Retourne les informations enrichies
   return {
     localPath,
     localName,
+    folderName,
     exifData: {
       dateTaken: exifData?.DateTimeOriginal,
       location: location,
@@ -337,11 +339,12 @@ downloadPhoto: async function (photo) {
       const localPaths = [];
       for (const photo of remotePhotos) {
         try {
-          const { localPath, localName, exifData } = await this.downloadPhoto(photo);
+          const { localPath, localName, folderName, exifData } = await this.downloadPhoto(photo);
           localPaths.push({
             name: localName,
             path: localPath,
             url: `/modules/MMM-NextcloudPhotos2/cache/${encodeURIComponent(localName)}`,
+            folderName: folderName,
             dateTaken: exifData?.dateTaken, // Date de prise de vue
             location: exifData?.location,  // Ville et pays
           });
