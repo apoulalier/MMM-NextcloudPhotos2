@@ -323,6 +323,9 @@ downloadPhoto: async function (photo) {
     location = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
   }
 
+  console.log(`[DEBUG] IAlorspour ${exifData.dateTaken}: ${exifData.latitude}`);
+  console.log("[DEBUG] Payload metadata (downloadPhoto):", metadata);
+
   // Redimensionnement et compression
   if (sharp) {
     const maxWidth = this.config.maxWidth || 1920;
