@@ -20,7 +20,7 @@ Module.register("MMM-NextcloudPhotos2", {
     maxWidth: 1920,                  // Max image width in pixels
     maxHeight: 1080,                 // Max image height in pixels
     imageQuality: 80,               // JPEG quality (1-100)
-    albums: ["Anniversaire 1 an", "Montreux 2023", "Danemark 2024"],
+    albums: ["Anniversaire 1 an", "Danemark 2024"],
     timeFormat: "DD/MM/YYYY HH:mm",
   },
 
@@ -175,12 +175,12 @@ Module.register("MMM-NextcloudPhotos2", {
       albumTitle.innerHTML = photo.folderName;
       let photoTime = document.createElement("div");
       photoTime.classList.add("photoTime");
-      photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(photo.dateTaken).fromNow() : moment(photo.dateTaken).format(self.config.timeFormat);
+      photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(photo.exifData.dateTaken).fromNow() : moment(photo.exifData.dateTaken).format(self.config.timeFormat);
       let infoText = document.createElement("div");
       infoText.classList.add("infoText");
       let fileLocation = document.createElement("div");
       fileLocation.classList.add("fileLocation");
-      fileLocation.innerHTML = photo.location;
+      fileLocation.innerHTML = photo.exifData.location;
       let fileLocation2 = document.createElement("div");
       fileLocation2.classList.add("fileLocation");
       fileLocation2.innerHTML = photo.path;

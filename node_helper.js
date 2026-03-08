@@ -133,8 +133,6 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
   if(!isSubfolder) davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${encodeURIComponent(baseFolderPath)}/`;
   else davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${this.config.folder}/${encodeURIComponent(baseFolderPath)}/`;
 
-  if(isSubfolder) console.log(`[MMM-NextcloudPhotos2] ${davUrl} / ${folderPath}`);
-  
   const propfindBody = `<?xml version="1.0" encoding="UTF-8"?>
   <d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
     <d:prop>
@@ -197,7 +195,7 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
     }
   }
 
-  console.log(`[MMM-NextcloudPhotos2] ${photos.length} photos trouvées dans /${baseFolderPath}/.`);
+  if(!isSubfolder) console.info(`[MMM-NextcloudPhotos2] ${photos.length} photos trouvées dans /${baseFolderPath}/.`);
   return photos;
 },
 
@@ -342,6 +340,8 @@ downloadPhoto: async function (photo) {
     const origKB = Math.round(response.data.length / 1024);
     const newKB = Math.round(resized.length / 1024);
     console.log(`[MMM-NextcloudPhotos2] Téléchargé+redimensionné : ${photo.name} (${origKB}KB → ${newKB}KB)`);
+    // Libère explicitement les ressources (optionnel, mais utile pour les gros fichiers)
+    image.destroy();
   } else {
     fs.writeFileSync(localPath, response.data);
     console.log(`[MMM-NextcloudPhotos2] Téléchargé: ${photo.name}`);
