@@ -3,6 +3,7 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const xml2js = require("xml2js");
+const exifr = require('exifr');
 
 let sharp;
 try {
@@ -192,6 +193,7 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
         contentType: contentType,
         size: parseInt(props.getcontentlength, 10) || 0,
         lastModified: props.getlastmodified || "",
+        folderName: baseFolderPath, // Nom du dossier parent
       });
     }
   }
@@ -200,77 +202,112 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
   return photos;
 },
 
+// ─── Nextcloud API - File Download ────────────────────────────
+downloadPhoto: async function (photo) {
+  const token = await this.getValidToken();
+  const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
 
-  // ─── Nextcloud API - File Download ────────────────────────────
+  // SSRF protection
+  const downloadUrl = `${baseUrl}${photo.href}`;
+  const parsedDownload = new URL(downloadUrl);
+  const parsedBase = new URL(baseUrl);
+  if (parsedDownload.host !== parsedBase.host) {
+    throw new Error(`URL host mismatch: ${parsedDownload.host} !== ${parsedBase.host}`);
+  }
 
-  downloadPhoto: async function (photo) {
-    const token = await this.getValidToken();
-    const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
+  // Chemin local
+  const baseName = path.parse(photo.name).name;
+  const localName = sharp ? baseName + ".jpg" : photo.name;
+  const localPath = path.join(this.cacheDir, localName);
 
-    // Validate that href stays on the same host (SSRF protection)
-    const downloadUrl = `${baseUrl}${photo.href}`;
-    const parsedDownload = new URL(downloadUrl);
-    const parsedBase = new URL(baseUrl);
-    if (parsedDownload.host !== parsedBase.host) {
-      throw new Error(`Letöltési URL host mismatch: ${parsedDownload.host} !== ${parsedBase.host}`);
+  // Vérification du chemin
+  const resolvedPath = path.resolve(localPath);
+  const resolvedCache = path.resolve(this.cacheDir);
+  if (!resolvedPath.startsWith(resolvedCache + path.sep) && resolvedPath !== resolvedCache) {
+    throw new Error(`Invalid filename, path traversal attempt: ${localName}`);
+  }
+
+  // Skip if already cached
+  if (fs.existsSync(localPath)) {
+    const stat = fs.statSync(localPath);
+    const remoteDate = new Date(photo.lastModified).getTime();
+    const localDate = stat.mtimeMs;
+    if (localDate >= remoteDate && stat.size > 0) {
+      return { localPath, localName };
     }
+  }
 
-    // Use .jpg extension for resized cache files
-    const baseName = path.parse(photo.name).name;
-    const localName = sharp ? baseName + ".jpg" : photo.name;
-    const localPath = path.join(this.cacheDir, localName);
+  // Téléchargement
+  const response = await axios.get(downloadUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+    responseType: "arraybuffer",
+    timeout: AXIOS_TIMEOUT,
+    maxRedirects: 0,
+  });
 
-    // Verify resolved path is within cache directory (path traversal protection)
-    const resolvedPath = path.resolve(localPath);
-    const resolvedCache = path.resolve(this.cacheDir);
-    if (!resolvedPath.startsWith(resolvedCache + path.sep) && resolvedPath !== resolvedCache) {
-      throw new Error(`Érvénytelen fájlnév, path traversal kísérlet: ${localName}`);
-    }
-
-    // Skip if already cached
-    if (fs.existsSync(localPath)) {
-      const stat = fs.statSync(localPath);
-      const remoteDate = new Date(photo.lastModified).getTime();
-      const localDate = stat.mtimeMs;
-      if (localDate >= remoteDate && stat.size > 0) {
-        return { localPath, localName };
-      }
-    }
-
-    const response = await axios.get(downloadUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      responseType: "arraybuffer",
-      timeout: AXIOS_TIMEOUT,
-      maxRedirects: 0,
+  // Extraction des métadonnées EXIF
+  let exifData = null;
+  try {
+    exifData = await exifr.parse(response.data, {
+      ifd0: true,
+      exif: true,
+      gps: true,
+      iptc: false,
+      xmp: false,
     });
+  } catch (e) {
+    console.warn(`[MMM-NextcloudPhotos2] Impossible de lire les métadonnées EXIF pour ${photo.name}: ${e.message}`);
+  }
 
-    // Resize and compress with sharp if available
-    if (sharp) {
-      const maxWidth = this.config.maxWidth || 1920;
-      const maxHeight = this.config.maxHeight || 1080;
-      const quality = this.config.imageQuality || 80;
-
-      const resized = await sharp(response.data)
-        .rotate() // auto-rotate based on EXIF
-        .resize(maxWidth, maxHeight, {
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .jpeg({ quality: quality, progressive: true })
-        .toBuffer();
-
-      fs.writeFileSync(localPath, resized);
-      const origKB = Math.round(response.data.length / 1024);
-      const newKB = Math.round(resized.length / 1024);
-      console.log(`[MMM-NextcloudPhotos2] Téléchargé+redimensionné : ${photo.name} (${origKB}KB → ${newKB}KB)`);
-    } else {
-      fs.writeFileSync(localPath, response.data);
-      console.log(`[MMM-NextcloudPhotos2] Téléchargé: ${photo.name}`);
+  // Géocodage si des coordonnées GPS sont disponibles
+  let location = null;
+  if (exifData?.latitude && exifData?.longitude) {
+    try {
+      const geoApiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${exifData.latitude}&lon=${exifData.longitude}`;
+      const geoResponse = await axios.get(geoApiUrl, { timeout: AXIOS_TIMEOUT });
+      location = {
+        city: geoResponse.data.address.city || geoResponse.data.address.town || geoResponse.data.address.village,
+        country: geoResponse.data.address.country,
+      };
+    } catch (e) {
+      console.warn(`[MMM-NextcloudPhotos2] Impossible de géocoder les coordonnées pour ${photo.name}: ${e.message}`);
     }
+  }
 
-    return { localPath, localName };
-  },
+  // Redimensionnement et compression
+  if (sharp) {
+    const maxWidth = this.config.maxWidth || 1920;
+    const maxHeight = this.config.maxHeight || 1080;
+    const quality = this.config.imageQuality || 80;
 
+    const resized = await sharp(response.data)
+      .rotate() // Auto-rotation basée sur les EXIF
+      .resize(maxWidth, maxHeight, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: quality, progressive: true })
+      .toBuffer();
+
+    fs.writeFileSync(localPath, resized);
+    const origKB = Math.round(response.data.length / 1024);
+    const newKB = Math.round(resized.length / 1024);
+    console.log(`[MMM-NextcloudPhotos2] Téléchargé+redimensionné : ${photo.name} (${origKB}KB → ${newKB}KB)`);
+  } else {
+    fs.writeFileSync(localPath, response.data);
+    console.log(`[MMM-NextcloudPhotos2] Téléchargé: ${photo.name}`);
+  }
+
+  // Retourne les informations enrichies
+  return {
+    localPath,
+    localName,
+    exifData: {
+      dateTaken: exifData?.DateTimeOriginal,
+      location: location,
+    },
+  };
+},
   // ─── Sync Logic ───────────────────────────────────────────────
 
   startSync: function () {
@@ -300,11 +337,13 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
       const localPaths = [];
       for (const photo of remotePhotos) {
         try {
-          const { localPath, localName } = await this.downloadPhoto(photo);
+          const { localPath, localName, exifData } = await this.downloadPhoto(photo);
           localPaths.push({
             name: localName,
             path: localPath,
             url: `/modules/MMM-NextcloudPhotos2/cache/${encodeURIComponent(localName)}`,
+            dateTaken: exifData?.dateTaken, // Date de prise de vue
+            location: exifData?.location,  // Ville et pays
           });
         } catch (dlErr) {
           console.error(`[MMM-NextcloudPhotos2] Error (${photo.name}):`, dlErr.message);

@@ -22,7 +22,6 @@ Module.register("MMM-NextcloudPhotos2", {
     imageQuality: 80,               // JPEG quality (1-100)
     albums : ["Anniversaire 1 an", "Montreux 2023"],
     timeFormat: "YYYY/MM/DD HH:mm",
-    autoInfoPosition: false,
   },
 
   photos: [],
@@ -170,44 +169,22 @@ Module.register("MMM-NextcloudPhotos2", {
       self._preloadImg = null;
 
       const info = document.getElementById("GPHOTO_INFO");
-    const album = Array.isArray(self.albums) ? self.albums.find((a) => a.id === target._albumId) : { id: -1, title: '' };
-    if (self.config.autoInfoPosition) {
-      let op = (album, target) => {
-        let now = new Date();
-        let q = Math.floor(now.getMinutes() / 15);
-        let r = [
-          [0, "none", "none", 0],
-          ["none", "none", 0, 0],
-          ["none", 0, 0, "none"],
-          [0, 0, "none", "none"],
-        ];
-        return r[q];
-      };
-      if (typeof self.config.autoInfoPosition === "function") {
-        op = self.config.autoInfoPosition;
-      }
-      const [top, left, bottom, right] = op(album, target);
-      info.style.setProperty("--top", top);
-      info.style.setProperty("--left", left);
-      info.style.setProperty("--bottom", bottom);
-      info.style.setProperty("--right", right);
-    }
     info.innerHTML = "";
-    let albumCover = document.createElement("div");
-    albumCover.classList.add("albumCover");
-    albumCover.style.backgroundImage = `url(modules/MMM-NextcloudPhotos2/cache/${album.id})`;
     let albumTitle = document.createElement("div");
     albumTitle.classList.add("albumTitle");
-    albumTitle.innerHTML = album.title;
+    albumTitle.innerHTML = photo.folderName;
     let photoTime = document.createElement("div");
     photoTime.classList.add("photoTime");
-    photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(target.mediaMetadata.creationTime).fromNow() : moment(target.mediaMetadata.creationTime).format(self.config.timeFormat);
+    photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(photo.dateTaken).fromNow() : moment(photo.dateTaken).format(self.config.timeFormat);
     let infoText = document.createElement("div");
     infoText.classList.add("infoText");
+    let fileLocation = document.createElement("div");
+    fileLocation.classList.add("fileLocation");
+    fileLocation.innerHTML = photo.location;
 
-    info.appendChild(albumCover);
     infoText.appendChild(albumTitle);
     infoText.appendChild(photoTime);
+    infoText.appendChild(fileLocation);
     info.appendChild(infoText);
 
       Log.info("[MMM-NextcloudPhotos2] Show picture : " + photo.name);
