@@ -255,101 +255,81 @@ downloadPhoto: async function (photo) {
   }
 
   // Variables pour les métadonnées
-  let exifData = null;
+  let exifData = { dateTaken: null, latitude: null, longitude: null };
   let location = null;
+  let imageBuffer = null;
 
-  // Si le fichier est déjà en cache
-  if (fs.existsSync(localPath)) {
-    const stat = fs.statSync(localPath);
-    const remoteDate = new Date(photo.lastModified).getTime();
-    const localDate = stat.mtimeMs;
+  // --- 1. Téléchargement (si nécessaire) ---
+  if (!fs.existsSync(localPath)) {
+    const response = await axios.get(downloadUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "arraybuffer",
+      timeout: AXIOS_TIMEOUT,
+      maxRedirects: 0,
+    });
+    imageBuffer = response.data;
+  } else {
+    // Lit le fichier local si déjà en cache
+    imageBuffer = fs.readFileSync(localPath);
+  }
 
-    // Lit les métadonnées depuis le fichier local avec sharp
-    try {
-      const metadata = await exifr.parse(localPath, { gps: true });
+  // --- 2. Extraction des EXIF (une seule fois) ---
+  try {
+    const metadata = await exifr.parse(imageBuffer, {
+      exif: true,
+      gps: true,
+      ifd0: true,
+    });
 
-      exifData = {
-        dateTaken: metadata.exif?.DateTimeOriginal,
-        latitude: metadata.exif?.GPSLatitude,
-        longitude: metadata.exif?.GPSLongitude,
-      };
+    exifData = {
+      dateTaken: metadata.DateTimeOriginal || photo.lastModified, // Fallback sur lastModified
+      latitude: metadata.latitude,
+      longitude: metadata.longitude,
+    };
 
-      // Géocodage si des coordonnées GPS sont disponibles
-      if (exifData.latitude && exifData.longitude) {
-        location = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
-      }
+    console.log(`[DEBUG] EXIF pour ${photo.name}:`, {
+      dateTaken: exifData.dateTaken,
+      latitude: exifData.latitude,
+      longitude: exifData.longitude,
+    });
 
-      console.log(`[DEBUG] IAlorspour ${exifData.dateTaken}: ${exifData.latitude}`);
-      console.log("[DEBUG] Payload metadata (downloadPhoto):", metadata);
+    // Géocodage si des coordonnées GPS sont disponibles
+    if (exifData.latitude && exifData.longitude) {
+      location = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
+    }
+  } catch (e) {
+    console.warn(`[WARNING] Impossible de lire les EXIF pour ${photo.name}: ${e.message}`);
+    exifData.dateTaken = photo.lastModified; // Fallback si pas d'EXIF
+  }
 
-      // Si le fichier local est à jour, on le retourne
-      if (localDate >= remoteDate && stat.size > 0) {
-        return {
-          localPath,
-          localName,
-          folderName,
-          exifData: {
-            dateTaken: exifData.dateTaken,
-            location: location,
-          },
-        };
-      }
-    } catch (e) {
-      console.warn(`[MMM-NextcloudPhotos2] Impossible de lire les métadonnées EXIF locales pour ${photo.name}: ${e.message}`);
+  // --- 3. Redimensionnement (si nécessaire) ---
+  if (!fs.existsSync(localPath)) {
+    if (sharp) {
+      const image = sharp(imageBuffer, {
+        limitInputPixels: 8000000, // Limite la mémoire
+      });
+
+      await image
+        .rotate() // Auto-rotation basée sur les EXIF
+        .resize(this.config.maxWidth || 1920, this.config.maxHeight || 1080, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .jpeg({
+          quality: this.config.imageQuality || 80,
+          progressive: true,
+        })
+        .toFile(localPath);
+
+      image.destroy(); // Libère la mémoire
+      console.log(`[DEBUG] Image sauvegardée (redimensionnée): ${localPath}`);
+    } else {
+      fs.writeFileSync(localPath, imageBuffer);
+      console.log(`[DEBUG] Image sauvegardée (brute): ${localPath}`);
     }
   }
 
-  // Sinon téléchargement nécessaire
-  const response = await axios.get(downloadUrl, {
-    headers: { Authorization: `Bearer ${token}` },
-    responseType: "arraybuffer",
-    timeout: AXIOS_TIMEOUT,
-    maxRedirects: 0,
-  });
-
-  // Crée une instance sharp pour extraire les métadonnées
-  const image = sharp(response.data);
-  const metadata = await image.metadata();
-
-  // Extrait les métadonnées EXIF
-  exifData = {
-    dateTaken: metadata.exif?.DateTimeOriginal,
-    latitude: metadata.exif?.GPSLatitude,
-    longitude: metadata.exif?.GPSLongitude,
-  };
-
-  // Géocodage si des coordonnées GPS sont disponibles
-  if (exifData?.latitude && exifData?.longitude) {
-    location = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
-  }
-
-  console.log(`[DEBUG] IAlorspour ${exifData.dateTaken}: ${exifData.latitude}`);
-  console.log("[DEBUG] Payload metadata (downloadPhoto):", metadata);
-
-  // Redimensionnement et compression
-  if (sharp) {
-    const maxWidth = this.config.maxWidth || 1920;
-    const maxHeight = this.config.maxHeight || 1080;
-    const quality = this.config.imageQuality || 80;
-
-    await image
-      .rotate() // Auto-rotation basée sur les EXIF
-      .resize(maxWidth, maxHeight, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality: quality, progressive: true })
-      .toFile(localPath);
-
-    // Libère explicitement les ressources (optionnel, mais utile pour les gros fichiers)
-    image.destroy();  // Libère la mémoire
-    console.log(`[DEBUG] Image sauvegardée : ${localPath}`);
-  } else {
-    fs.writeFileSync(localPath, response.data);
-    console.log(`[MMM-NextcloudPhotos2] Téléchargé: ${photo.name}`);
-  }
-
-  // Retourne les informations enrichies
+  // --- 4. Retour des données ---
   return {
     localPath,
     localName,
