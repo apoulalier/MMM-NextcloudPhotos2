@@ -282,7 +282,7 @@ downloadPhoto: async function (photo) {
     });
 
     exifData = {
-      dateTaken: metadata.DateTimeOriginal || photo.lastModified, // Fallback sur lastModified
+      dateTaken: metadata.DateTime,
       latitude: metadata.latitude,
       longitude: metadata.longitude,
     };
