@@ -394,6 +394,7 @@ downloadPhoto: async function (photo) {
             dateTaken: exifData?.dateTaken, // Date de prise de vue
             location: exifData?.location,  // Ville et pays
           });
+          console.log("[DEBUG] exifData?.dateTaken:", exifData?.dateTaken);
         } catch (dlErr) {
           console.error(`[MMM-NextcloudPhotos2] Error (${photo.name}):`, dlErr.message);
         }
@@ -415,6 +416,7 @@ downloadPhoto: async function (photo) {
       }
 
       this.photoList = localPaths;
+      console.log("[DEBUG] Payload final (PHOTOS_UPDATED):", this.photoList);
       this.sendSocketNotification("PHOTOS_UPDATED", this.photoList);
       console.log(`[MMM-NextcloudPhotos2] Update ending. ${localPaths.length} pictures available.`);
     } catch (err) {
