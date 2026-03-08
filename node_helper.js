@@ -267,7 +267,7 @@ downloadPhoto: async function (photo) {
     // Lit les métadonnées depuis le fichier local avec sharp
     try {
       const image = sharp(localPath);
-      const metadata = await image.metadata();
+      const metadata = await exifr.parse(localPath, { gps: true });
 
       exifData = {
         dateTaken: metadata.exif?.DateTimeOriginal,
@@ -327,21 +327,18 @@ downloadPhoto: async function (photo) {
     const maxHeight = this.config.maxHeight || 1080;
     const quality = this.config.imageQuality || 80;
 
-    const resized = await image
+    await image
       .rotate() // Auto-rotation basée sur les EXIF
       .resize(maxWidth, maxHeight, {
         fit: "inside",
         withoutEnlargement: true,
       })
       .jpeg({ quality: quality, progressive: true })
-      .toBuffer();
+      .toFile(localPath);
 
-    fs.writeFileSync(localPath, resized);
-    const origKB = Math.round(response.data.length / 1024);
-    const newKB = Math.round(resized.length / 1024);
-    console.log(`[MMM-NextcloudPhotos2] Téléchargé+redimensionné : ${photo.name} (${origKB}KB → ${newKB}KB)`);
     // Libère explicitement les ressources (optionnel, mais utile pour les gros fichiers)
-    image.destroy();
+    image.destroy();  // Libère la mémoire
+    console.log(`[DEBUG] Image sauvegardée : ${localPath}`);
   } else {
     fs.writeFileSync(localPath, response.data);
     console.log(`[MMM-NextcloudPhotos2] Téléchargé: ${photo.name}`);
