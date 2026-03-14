@@ -423,7 +423,16 @@ module.exports = NodeHelper.create({
         timeout: AXIOS_TIMEOUT,
         maxRedirects: 0,
       });
-      imageBuffer = response.data;
+
+
+console.log("Type de response.data :", response.data instanceof ArrayBuffer);
+console.log("Taille de response.data :", response.data.byteLength);
+console.log("Premiers octets :", new Uint8Array(response.data).slice(0, 10));
+
+if (!(response.data instanceof ArrayBuffer) || response.data.byteLength === 0) {
+  throw new Error("La réponse Axios n'est pas un ArrayBuffer valide ou est vide.");
+}
+imageBuffer = response.data;
 
       // 1. Extraction des EXIF (distant)
       exifData = await this.extractExifData(imageBuffer);
