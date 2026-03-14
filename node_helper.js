@@ -259,53 +259,28 @@ module.exports = NodeHelper.create({
     }
   },
 
-  extractExifData: async function (arrayBuffer) {
-  try {
-    // 1. Vérifier que le buffer est valide
-    if (!(arrayBuffer instanceof ArrayBuffer) || arrayBuffer.byteLength === 0) {
-      throw new Error("Buffer invalide ou vide");
-    }
-
-    // 2. Convertir en Uint8Array
-    const uint8Array = new Uint8Array(arrayBuffer);
-
-    // 3. Vérifier que c'est un JPEG (débute par FF D8 FF)
-    if (uint8Array[0] !== 0xFF || uint8Array[1] !== 0xD8 || uint8Array[2] !== 0xFF) {
-      throw new Error("Le buffer ne semble pas être un JPEG valide");
-    }
-
-    // 4. Charger les EXIF
+  extractExifData: async function (uint8Array) {
+   try {
+    // Pas besoin de convertir, uint8Array est déjà un Uint8Array/Buffer
     const exifData = piexif.load(uint8Array.buffer);
 
-    // 5. Vérifier que exifData existe
     if (!exifData) {
       throw new Error("Aucune donnée EXIF trouvée dans l'image");
     }
 
-    // 6. Extraire les données
     const gps = exifData.GPS || {};
     const exif = exifData.Exif || {};
 
     return {
       dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
-      latitude: gps[piexif.GPSIFD.GPSLatitude]
-        ? gps[piexif.GPSIFD.GPSLatitude][0] / gps[piexif.GPSIFD.GPSLatitude][1]
-        : null,
-      longitude: gps[piexif.GPSIFD.GPSLongitude]
-        ? gps[piexif.GPSIFD.GPSLongitude][0] / gps[piexif.GPSIFD.GPSLongitude][1]
-        : null,
+      latitude: gps[piexif.GPSIFD.GPSLatitude] ? gps[piexif.GPSIFD.GPSLatitude][0] / gps[piexif.GPSIFD.GPSLatitude][1] : null,
+      longitude: gps[piexif.GPSIFD.GPSLongitude] ? gps[piexif.GPSIFD.GPSLongitude][0] / gps[piexif.GPSIFD.GPSLongitude][1] : null,
       folderName: exif[piexif.ExifIFD.UserComment] || null,
       location: exif[piexif.ExifIFD.ImageDescription] || null,
     };
   } catch (e) {
     console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
-    return {
-      dateTaken: null,
-      latitude: null,
-      longitude: null,
-      folderName: null,
-      location: null,
-    };
+    return { dateTaken: null, latitude: null, longitude: null, folderName: null, location: null };
   }
 },
 
