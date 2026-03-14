@@ -259,10 +259,11 @@ module.exports = NodeHelper.create({
     }
   },
 
-  extractExifData: async function (uint8Array) {
+  extractExifData: async function (arrayBuffer) {
    try {
-    // Pas besoin de convertir, uint8Array est déjà un Uint8Array/Buffer
-    const exifData = piexif.load(uint8Array.buffer);
+    const buffer = Buffer.from(arrayBuffer);
+    const binaryString = buffer.toString("binary");
+    const exifData = piexif.load(binaryString);
 
     if (!exifData) {
       throw new Error("Aucune donnée EXIF trouvée dans l'image");
@@ -412,7 +413,7 @@ if (!(response.data instanceof ArrayBuffer) || response.data.byteLength === 0) {
 imageBuffer = response.data;
 
       // 1. Extraction des EXIF (distant)
-      exifData = await this.extractExifData(imageBuffer.buffer);
+      exifData = await this.extractExifData(imageBuffer);
       exifData.folderName = photo.folderName;
 
       // --- 2. Redimensionnement (si nécessaire) ---
