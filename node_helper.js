@@ -309,7 +309,6 @@ module.exports = NodeHelper.create({
     const baseName = path.parse(photo.name).name;
     const localName = sharp ? baseName + ".jpg" : photo.name;
     const localPath = path.join(this.cacheDir, localName);
-    const folderName = photo.folderName;
 
     // Vérification du chemin
     const resolvedPath = path.resolve(localPath);
@@ -319,7 +318,7 @@ module.exports = NodeHelper.create({
     }
 
     // Variables pour les métadonnées
-    let exifData = { dateTaken: null, latitude: null, longitude: null, location: null, folderName: null };
+    let exifData = { dateTaken: null, latitude: null, longitude: null, location: null, folderName:  photo.folderName };
     let imageBuffer = null;
 
     // --- 1. Téléchargement (si nécessaire => si non présent dans le dossier cache local) ---
@@ -339,7 +338,7 @@ module.exports = NodeHelper.create({
       if (sharp) {
         const image = sharp(imageBuffer, {
           limitInputPixels: 80000000,
-        });
+        }).toFormat("jpeg"); // Force la conversion en JPEG
 
         // Traitement Sharp (redimensionnement, rotation, etc.)
         const processedBuffer = await image
