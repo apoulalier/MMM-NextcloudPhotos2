@@ -401,16 +401,7 @@ _fromExifDate: function(exifStr) {
             quality: this.config.imageQuality || 80,
             progressive: true,
           })
-          .toBuffer(); // Récupère le buffer traité
-
-        console.warn(`[DEBUG] EXIF distant pour ${localPath}:`, {
-          dateTaken: exifData.dateTaken,
-          latitude: exifData.latitude,
-          longitude: exifData.longitude,
-          position: exifData.location,
-          folder: exifData.folderName,
-        });
-
+          .toBuffer(); // Récupère le buffer trait
 
         // 4. Insertion des EXIF distant sur le buffer local
         processedBuffer = await this.insertExifData(processedBuffer, exifData);
@@ -433,15 +424,6 @@ _fromExifDate: function(exifStr) {
 
     // 1. Extraction des EXIF (local)
     exifData = await this.extractExifData(imageBuffer);
-    // --- 2. Extraction des EXIF (une seule fois) ---
-
-    console.warn(`[DEBUG] EXIF local pour ${localPath}:`, {
-          dateTaken: exifData.dateTaken,
-          latitude: exifData.latitude,
-          longitude: exifData.longitude,
-          position: exifData.location,
-          folder: exifData.folderName,
-        });
 
     // --- 4. Retour des données ---
     return {
@@ -509,7 +491,6 @@ _fromExifDate: function(exifStr) {
       }
 
       this.photoList = localPaths;
-      console.log("[DEBUG] Payload final (PHOTOS_UPDATED):", this.photoList);
       this.sendSocketNotification("PHOTOS_UPDATED", this.photoList);
       console.log(`[MMM-NextcloudPhotos2] Update ending. ${localPaths.length} pictures available.`);
     } catch (err) {

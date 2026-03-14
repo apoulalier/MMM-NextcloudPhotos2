@@ -74,10 +74,8 @@ body {
 
 #GPHOTO_INFO {
   position:absolute;
-  top: var(--top);
-  left: var(--left);
-  bottom: var(--bottom);
-  right: var(--right);
+  bottom: 0;
+  right: 0;
   margin:10px;
   background-color: rgba(0,0,0,0.5);
   padding: 10px;
@@ -97,10 +95,7 @@ body {
 
 #GPHOTO_INFO .infoText {
   float:right;
-  margin-left: 12px;
-  padding-right: 12px;
-  padding-top:6px;
-  font-size:18px;
+  font-size:14px;
   line-height:100%;
   color:#FFF;
 }
