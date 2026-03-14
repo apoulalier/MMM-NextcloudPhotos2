@@ -330,15 +330,9 @@ downloadPhoto: async function (photo) {
       };
 
       // Remplir les champs EXIF pertinents
-      if (exifData.dateTaken) {
         exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
-      }
-      if (exifData.latitude && exifData.longitude) {
-        exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = piexif.GPSHelper.degToDms(exifData.latitude);
-        exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = piexif.GPSHelper.degToDms(exifData.longitude);
-        exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
-        exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
-      }
+        exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
+        exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
 
       // Générer les bytes EXIF
       const exifBytes = piexif.dump(exifObj);
