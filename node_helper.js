@@ -287,7 +287,7 @@ module.exports = NodeHelper.create({
     if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
     if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
 
-    if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
+    if (exifData.latitude != null && exifData.longitude != null) {
       exifObj["GPS"] = {}; // Créer la clé GPS uniquement si nécessaire
       exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDms(exifData.latitude);
       exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDms(exifData.longitude);
@@ -397,7 +397,7 @@ module.exports = NodeHelper.create({
           .toBuffer(); // Récupère le buffer traité
 
         console.warn(`[DEBUG] EXIF distant pour ${localPath}:`, {
-          dateTaken: exifData.dateTaken,
+          dateTaken: exifData.dateTaken2,
           date2: exifData.dateTaken2,
           latitude: exifData.latitude,
           longitude: exifData.longitude,
