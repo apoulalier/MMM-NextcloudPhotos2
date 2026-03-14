@@ -332,13 +332,13 @@ module.exports = NodeHelper.create({
     if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
 
     if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
-      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
-      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
+       exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDMS(exifData.latitude);
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDMS(exifData.longitude);
       exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
       exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
+      exifObj["Exif"][piexif.ExifIFD.ImageDescription] = this.geocodeCoordinates(exifData.latitude, exifData.longitude);
     }
 
-    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = this.geocodeCoordinates(exifData.latitude, exifData.longitude);
 
     try {
       const exifBytes = piexif.dump(exifObj);
@@ -352,6 +352,14 @@ module.exports = NodeHelper.create({
     }
 },
 
+// Helper pour convertir les coordonnées décimales en DMS (degrés, minutes, secondes)
+_convertDecimalToDMS: function(decimal) {
+  const absDecimal = Math.abs(decimal);
+  const degrees = Math.floor(absDecimal);
+  const minutes = Math.floor((absDecimal - degrees) * 60);
+  const seconds = ((absDecimal - degrees - minutes / 60) * 3600).toFixed(2);
+  return [[degrees, 1], [minutes, 1], [Number(seconds), 100]];
+},
 
   downloadPhoto: async function (photo) {
     const token = await this.getValidToken();
@@ -425,10 +433,6 @@ module.exports = NodeHelper.create({
           position: exifData.location,
           folder: exifData.folderName,
         });
-
-        // Log des premiers octets du buffer traité
-        const firstBytesAfterSharp = processedBuffer.slice(0, 10).toString('hex');
-        console.log(`[DEBUG] Premiers octets après Sharp : ${firstBytesAfterSharp}`); // Doit commencer par FFD8
 
         // 4. Insertion des EXIF sur le buffer
         processedBuffer = this.insertExifData(processedBuffer, exifData);
