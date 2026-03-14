@@ -279,10 +279,12 @@ module.exports = NodeHelper.create({
 
     if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
       exifObj["GPS"] = {}; // Créer la clé GPS uniquement si nécessaire
-      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDMS(exifData.latitude);
-      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDMS(exifData.longitude);
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
       exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
       exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
+      let geo = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
+      console.warn("[WARN] Insertion GEO :", geo);
       //exifObj["Exif"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(this._convertDecimalToDMS(exifData.latitude), this._convertDecimalToDMS(exifData.longitude));
     }
 
