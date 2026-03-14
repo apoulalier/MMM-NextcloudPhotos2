@@ -286,7 +286,7 @@ module.exports = NodeHelper.create({
     }
 
     // 2. Ajout de la localisation dans ImageDescription
-    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = exifData.location;
+    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = this.geocodeCoordinates(exifData.latitude, exifData.longitude);
 
     // 4. Génération des bytes EXIF et insertion dans le buffer
     const exifBytes = piexif.dump(exifObj);
@@ -320,7 +320,6 @@ module.exports = NodeHelper.create({
 
     // Variables pour les métadonnées
     let exifData = { dateTaken: null, latitude: null, longitude: null, location: null, folderName: null };
-    let location = null;
     let imageBuffer = null;
 
     // --- 1. Téléchargement (si nécessaire => si non présent dans le dossier cache local) ---
