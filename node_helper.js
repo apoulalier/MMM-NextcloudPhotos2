@@ -243,7 +243,7 @@ module.exports = NodeHelper.create({
 
       const gps = exifData.GPS || {};
       const exif = exifData.Exif || {};
-      const th = exifData.th || {};
+      const th = exifData["0th"] || {};
 
       const latDMS = gps[piexif.GPSIFD.GPSLatitude];
       const latRef = gps[piexif.GPSIFD.GPSLatitudeRef];
@@ -261,7 +261,7 @@ module.exports = NodeHelper.create({
         latitude: latitude || null,
         longitude: longitude || null,
         folderName: exif[piexif.ExifIFD.UserComment] || null,
-        location: exif[th.ImageIFD.ImageDescription] || null,
+        location: th[piexif.ImageIFD.ImageDescription] || null,
       };
     } catch (e) {
       console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
