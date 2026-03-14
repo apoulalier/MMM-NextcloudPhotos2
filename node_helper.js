@@ -409,11 +409,11 @@ _convertDecimalToDMS: function(decimal) {
         });
 
         // 4. Insertion des EXIF sur le buffer
-        //processedBuffer = this.insertExifData(processedBuffer, exifData);
+        processedBuffer = this.insertExifData(processedBuffer, exifData);
 
         // Réécrit le fichier avec les EXIF
-        //fs.writeFileSync(localPath, processedBuffer);
-        //console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
+        fs.writeFileSync(localPath, processedBuffer);
+        console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
 
 
 
