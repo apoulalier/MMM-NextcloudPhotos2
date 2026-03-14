@@ -371,7 +371,7 @@ module.exports = NodeHelper.create({
       imageBuffer = response.data;
 
       // 1. Extraction des EXIF (distant)
-      exifData = this.extractExifData(imageBuffer);
+      exifData = await this.extractExifData(imageBuffer);
 
       // --- 2. Redimensionnement (si nécessaire) ---
       if (sharp) {
