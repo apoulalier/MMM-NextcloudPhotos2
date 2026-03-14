@@ -238,7 +238,7 @@ module.exports = NodeHelper.create({
       const exifData = piexif.load(binaryString);
 
       if (!exifData) {
-        throw new Error("Aucune donnée EXIF trouvée dans l'image");
+        console.error("Aucune donnée EXIF trouvée dans l'image");
       }
 
       const gps = exifData.GPS || {};
@@ -297,16 +297,13 @@ module.exports = NodeHelper.create({
       exifObj["0th"][piexif.ImageIFD.ImageDescription] = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
     }
 
-
     try {
       const exifBytes = piexif.dump(exifObj);
       // 5. Injecter dans l'image et retourner un Buffer Node.js
-      console.warn("[WARN] Insertion EXIF (piexif) :", exifObj);
       const updatedBinary = piexif.insert(exifBytes, binaryString);
       return Buffer.from(updatedBinary, "binary");
     } catch (exifError) {
       console.error("[ERROR] Échec de l'insertion EXIF (piexif) :", exifError.message);
-      console.error("[DEBUG] Objet EXIF généré :", exifObj); // Log pour débogage
       return imageBuffer; // Retourne le buffer original en cas d'échec
     }
   },
@@ -404,19 +401,15 @@ module.exports = NodeHelper.create({
         });
 
 
-        // 4. Insertion des EXIF sur le buffer
+        // 4. Insertion des EXIF distant sur le buffer local
         processedBuffer = await this.insertExifData(processedBuffer, exifData);
-
+        imageBuffer = processedBuffer;
         // Réécrit le fichier avec les EXIF
         fs.writeFileSync(localPath, processedBuffer);
+        
         image.destroy();
         console.log(`[DEBUG] Image sauvegardée (redimensionnée + EXIF préservés): ${localPath}`);
-        // --- 4. Retour des données ---
-        return {
-          localPath,
-          localName,
-          exifData,
-        };
+        
       } else {
         fs.writeFileSync(localPath, imageBuffer);
         console.log(`[DEBUG] Image sauvegardée (brute): ${localPath}`);
@@ -431,12 +424,14 @@ module.exports = NodeHelper.create({
     exifData = await this.extractExifData(imageBuffer);
     // --- 2. Extraction des EXIF (une seule fois) ---
 
-
-    console.warn(`[DEBUG] LOCAL EXIF pour ${photo.name}:`, {
-      dateTaken: exifData.dateTaken,
-      location: exifData.location,
-      longitude: exifData.folderName,
-    });
+    console.warn(`[DEBUG] EXIF local pour ${localPath}:`, {
+          dateTaken: exifData.dateTaken2,
+          date2: exifData.dateTaken2,
+          latitude: exifData.latitude,
+          longitude: exifData.longitude,
+          position: exifData.location,
+          folder: exifData.folderName,
+        });
 
     // --- 4. Retour des données ---
     return {
