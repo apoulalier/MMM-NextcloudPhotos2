@@ -234,7 +234,7 @@ module.exports = NodeHelper.create({
  */
   extractExifData: async function (image) {
     try {
-      const metadata = await piexif.dump(image, {
+      const metadata = await piexif.load(image, {
         exif: true,
         gps: true,
         ifd0: true,
