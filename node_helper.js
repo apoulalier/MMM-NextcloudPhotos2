@@ -274,6 +274,9 @@ downloadPhoto: async function (photo) {
     imageBuffer = fs.readFileSync(localPath);
   }
 
+  const fileType = await fileTypeFromBuffer(imageBuffer);
+console.log(`[DEBUG] Type de fichier généré:`, fileType?.mime);
+
   // --- 2. Extraction des EXIF (une seule fois) ---
   try {
     const metadata = await exifr.parse(imageBuffer, {
@@ -325,11 +328,8 @@ downloadPhoto: async function (photo) {
 
       // --- NOUVEAU : Réinjection des EXIF après Sharp ---
       const exifObj = {
-        "0th": {},
         "Exif": {},
         "GPS": {},
-        "1st": {},
-        "thumbnail": null,
       };
 
       // Remplir les champs EXIF pertinents
@@ -348,8 +348,19 @@ downloadPhoto: async function (photo) {
 
       // Réécrire le fichier avec les EXIF
       let finalBuffer = fs.readFileSync(localPath);
-      finalBuffer = piexif.insert(exifBytes, finalBuffer);
-      fs.writeFileSync(localPath, finalBuffer);
+try {
+  // Vérifie la signature JPEG
+  if (finalBuffer[0] === 0xFF && finalBuffer[1] === 0xD8) {
+    const exifBytes = piexif.dump(exifObj);
+    finalBuffer = piexif.insert(exifBytes, finalBuffer);
+    fs.writeFileSync(localPath, finalBuffer);
+    console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
+  } else {
+    console.warn(`[WARNING] ${localPath} n'est pas un JPEG, EXIF ignorés.`);
+  }
+} catch (e) {
+  console.error(`[ERROR] Échec de l'insertion EXIF pour ${localPath}:`, e.message);
+}
 
       console.log(`[DEBUG] EXIF2 pour ${localPath}:`, {
       dateTaken: exifData.dateTaken,
