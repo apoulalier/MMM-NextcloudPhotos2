@@ -358,7 +358,11 @@ module.exports = NodeHelper.create({
           fs.writeFileSync(localPath, processedBuffer);
         console.log(`[DEBUG] Image sauvegardée (redimensionnée): ${localPath}`);
          
-         
+          console.log(`[DEBUG] EXIF distant pour ${localPath}:`, {
+          dateTaken: exifData.dateTaken,
+          latitude: exifData.latitude,
+          longitude: exifData.longitude,
+        });
           // 4. Insertion des EXIF sur le buffer
         processedBuffer = this.insertExifData(processedBuffer, exifData);
 
@@ -366,11 +370,7 @@ module.exports = NodeHelper.create({
         fs.writeFileSync(localPath, processedBuffer);
         console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
 
-        console.log(`[DEBUG] EXIF distant pour ${localPath}:`, {
-          dateTaken: exifData.dateTaken,
-          latitude: exifData.latitude,
-          longitude: exifData.longitude,
-        });
+       
 
         image.destroy();
         console.log(`[DEBUG] Image sauvegardée (redimensionnée + EXIF préservés): ${localPath}`);
