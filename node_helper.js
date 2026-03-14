@@ -274,9 +274,6 @@ downloadPhoto: async function (photo) {
     imageBuffer = fs.readFileSync(localPath);
   }
 
-  const fileType = await fileTypeFromBuffer(imageBuffer);
-console.log(`[DEBUG] Type de fichier généré:`, fileType?.mime);
-
   // --- 2. Extraction des EXIF (une seule fois) ---
   try {
     const metadata = await exifr.parse(imageBuffer, {
