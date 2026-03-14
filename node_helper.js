@@ -125,16 +125,16 @@ module.exports = NodeHelper.create({
   },
 
   // ─── Nextcloud API - File Listing ─────────────────────────────
-listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
-  const token = await this.getValidToken();
-  const baseFolderPath = folderPath || this.config.folder || "mirror";
-  const username = this.config.username || (this.tokens && this.tokens.username);
-  const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
+  listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
+    const token = await this.getValidToken();
+    const baseFolderPath = folderPath || this.config.folder || "mirror";
+    const username = this.config.username || (this.tokens && this.tokens.username);
+    const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
 
-  if(!isSubfolder) davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${encodeURIComponent(baseFolderPath)}/`;
-  else davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${this.config.folder}/${encodeURIComponent(baseFolderPath)}/`;
+    if (!isSubfolder) davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${encodeURIComponent(baseFolderPath)}/`;
+    else davUrl = `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/${this.config.folder}/${encodeURIComponent(baseFolderPath)}/`;
 
-  const propfindBody = `<?xml version="1.0" encoding="UTF-8"?>
+    const propfindBody = `<?xml version="1.0" encoding="UTF-8"?>
   <d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
     <d:prop>
       <d:displayname/>
@@ -146,238 +146,263 @@ listPhotosInFolder: async function (folderPath = null, isSubfolder = false) {
     </d:prop>
   </d:propfind>`;
 
-  const response = await axios({
-    method: "PROPFIND",
-    url: davUrl,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/xml",
-      Depth: "1",
-    },
-    data: propfindBody,
-    timeout: AXIOS_TIMEOUT,
-  });
+    const response = await axios({
+      method: "PROPFIND",
+      url: davUrl,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/xml",
+        Depth: "1",
+      },
+      data: propfindBody,
+      timeout: AXIOS_TIMEOUT,
+    });
 
-  const parsed = await xml2js.parseStringPromise(response.data, {
-    explicitArray: false,
-    tagNameProcessors: [xml2js.processors.stripPrefix],
-  });
+    const parsed = await xml2js.parseStringPromise(response.data, {
+      explicitArray: false,
+      tagNameProcessors: [xml2js.processors.stripPrefix],
+    });
 
-  const responses = parsed.multistatus.response;
-  const items = Array.isArray(responses) ? responses : [responses];
+    const responses = parsed.multistatus.response;
+    const items = Array.isArray(responses) ? responses : [responses];
 
-  const imageExtensions = /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i;
-  const photos = [];
+    const imageExtensions = /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i;
+    const photos = [];
 
-  for (const item of items) {
-    const href = item.href;
-    const props = item.propstat?.prop || item.propstat?.[0]?.prop;
-    if (!props) continue;
+    for (const item of items) {
+      const href = item.href;
+      const props = item.propstat?.prop || item.propstat?.[0]?.prop;
+      if (!props) continue;
 
-    const contentType = props.getcontenttype || "";
-    const rawName = props.displayname || path.basename(decodeURIComponent(href));
-    const safeName = this.sanitizeFilename(rawName);
+      const contentType = props.getcontenttype || "";
+      const rawName = props.displayname || path.basename(decodeURIComponent(href));
+      const safeName = this.sanitizeFilename(rawName);
 
-    // Si c'est un dossier et qu'on est dans le dossier racine (pas un sous-dossier)
-    // Vérifie si le dossier est dans la liste des albums autorisés
+      // Si c'est un dossier et qu'on est dans le dossier racine (pas un sous-dossier)
+      // Vérifie si le dossier est dans la liste des albums autorisés
       if (!isSubfolder && props.resourcetype && Object.keys(props.resourcetype).includes("collection") && this.config.albums && this.config.albums.includes(rawName)) {
         const subFolderPhotos = await this.listPhotosInFolder(rawName, true);
         photos.push(...subFolderPhotos);
-    }
-    // Si c'est une image, on l'ajoute à la liste
-    else if (contentType.startsWith("image/") || imageExtensions.test(safeName)) {
-      photos.push({
-        name: safeName,
-        href: href,
-        contentType: contentType,
-        size: parseInt(props.getcontentlength, 10) || 0,
-        lastModified: props.getlastmodified || "",
-      });
-    }
-  }
-
-  if(!isSubfolder) console.info(`[MMM-NextcloudPhotos2] ${photos.length} photos trouvées dans /${baseFolderPath}/.`);
-  return photos;
-},
-
-/**
- * Convertit des coordonnées GPS en ville et pays via une API de géocodage.
- * @param {number} latitude - Latitude
- * @param {number} longitude - Longitude
- * @returns {Promise<{city: string, country: string}|null>} - Ville et pays, ou null en cas d'erreur
- */
-geocodeCoordinates: async function (latitude, longitude) {
-  try {
-    // Utilise Nominatim (OpenStreetMap) pour le géocodage inverse
-    const geoApiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
-    const geoResponse = await axios.get(geoApiUrl, {
-      timeout: AXIOS_TIMEOUT,
-      headers: {
-        'User-Agent': 'MMM-NextcloudPhotos/1.0' // Obligatoire pour Nominatim
       }
-    });
-
-    // Extrait la ville et le pays
-    const address = geoResponse.data.address;
-    return {
-      city: address.city || address.town || address.village || address.hamlet,
-      country: address.country,
-    };
-  } catch (e) {
-    console.warn(`[MMM-NextcloudPhotos2] Impossible de géocoder les coordonnées (${latitude}, ${longitude}): ${e.message}`);
-    return null;
-  }
-},
-// ... (le reste de vos imports et variables)
-
-downloadPhoto: async function (photo) {
-  const token = await this.getValidToken();
-  const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
-
-  // SSRF protection
-  const downloadUrl = `${baseUrl}${photo.href}`;
-  const parsedDownload = new URL(downloadUrl);
-  const parsedBase = new URL(baseUrl);
-  if (parsedDownload.host !== parsedBase.host) {
-    throw new Error(`URL host mismatch: ${parsedDownload.host} !== ${parsedBase.host}`);
-  }
-
-  // Chemin local
-  const baseName = path.parse(photo.name).name;
-  const localName = sharp ? baseName + ".jpg" : photo.name;
-  const localPath = path.join(this.cacheDir, localName);
-  const folderName = photo.folderName;
-
-  // Vérification du chemin
-  const resolvedPath = path.resolve(localPath);
-  const resolvedCache = path.resolve(this.cacheDir);
-  if (!resolvedPath.startsWith(resolvedCache + path.sep) && resolvedPath !== resolvedCache) {
-    throw new Error(`Invalid filename, path traversal attempt: ${localName}`);
-  }
-
-  // Variables pour les métadonnées
-  let exifData = { dateTaken: null, latitude: null, longitude: null };
-  let location = null;
-  let imageBuffer = null;
-
-  // --- 1. Téléchargement (si nécessaire => si non présent dans le dossier cache local) ---
-  if (!fs.existsSync(localPath)) {
-    const response = await axios.get(downloadUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      responseType: "arraybuffer",
-      timeout: AXIOS_TIMEOUT,
-      maxRedirects: 0,
-    });
-    imageBuffer = response.data;
-  } else {
-    // Lit le fichier local si déjà en cache
-    imageBuffer = fs.readFileSync(localPath);
-  }
-
-  // --- 2. Extraction des EXIF (une seule fois) ---
-  try {
-    const metadata = await exifr.parse(imageBuffer, {
-      exif: true,
-      gps: true,
-      ifd0: true,
-    });
-
-    exifData = {
-      dateTaken: metadata.DateTimeOriginal || photo.lastModified,
-      latitude: metadata.latitude,
-      longitude: metadata.longitude,
-    };
-
-    console.log(`[DEBUG] EXIF pour ${photo.name}:`, {
-      dateTaken: exifData.dateTaken,
-      latitude: exifData.latitude,
-      longitude: exifData.longitude,
-    });
-
-    // Géocodage si des coordonnées GPS sont disponibles
-    if (exifData.latitude && exifData.longitude) {
-      location = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
+      // Si c'est une image, on l'ajoute à la liste
+      else if (contentType.startsWith("image/") || imageExtensions.test(safeName)) {
+        photos.push({
+          name: safeName,
+          href: href,
+          contentType: contentType,
+          size: parseInt(props.getcontentlength, 10) || 0,
+          lastModified: props.getlastmodified || "",
+        });
+      }
     }
-  } catch (e) {
-    console.warn(`[WARNING] Impossible de lire les EXIF pour ${photo.name}: ${e.message}`);
-    exifData.dateTaken = photo.lastModified;
-  }
 
-  // --- 3. Redimensionnement (si nécessaire) ---
-  if (!fs.existsSync(localPath)) {
-    if (sharp) {
-      const image = sharp(imageBuffer, {
-        limitInputPixels: 80000000,
+    if (!isSubfolder) console.info(`[MMM-NextcloudPhotos2] ${photos.length} photos trouvées dans /${baseFolderPath}/.`);
+    return photos;
+  },
+
+  /**
+   * Convertit des coordonnées GPS en ville et pays via une API de géocodage.
+   * @param {number} latitude - Latitude
+   * @param {number} longitude - Longitude
+   * @returns {Promise<{city: string, country: string}|null>} - Ville et pays, ou null en cas d'erreur
+   */
+  geocodeCoordinates: async function (latitude, longitude) {
+    try {
+      // Utilise Nominatim (OpenStreetMap) pour le géocodage inverse
+      const geoApiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
+      const geoResponse = await axios.get(geoApiUrl, {
+        timeout: AXIOS_TIMEOUT,
+        headers: {
+          'User-Agent': 'MMM-NextcloudPhotos/1.0' // Obligatoire pour Nominatim
+        }
       });
 
-      // Traitement Sharp (redimensionnement, rotation, etc.)
-      await image
-        .rotate()
-        .resize(this.config.maxWidth || 1920, this.config.maxHeight || 1080, {
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .jpeg({
-          quality: this.config.imageQuality || 80,
-          progressive: true,
-        })
-        .toFile(localPath);
-
-      // --- NOUVEAU : Réinjection des EXIF après Sharp ---
-      const exifObj = {
-        "Exif": {},
-        "GPS": {},
+      // Extrait la ville et le pays
+      const address = geoResponse.data.address;
+      return {
+        city: address.city || address.town || address.village || address.hamlet,
+        country: address.country,
       };
-
-      // Remplir les champs EXIF pertinents
-        exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
-        exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
-        exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
-
-      // Générer les bytes EXIF
-      const exifBytes = piexif.dump(exifObj);
-
-      // Réécrire le fichier avec les EXIF
-      let finalBuffer = fs.readFileSync(localPath);
-try {
-  // Vérifie la signature JPEG
-  if (finalBuffer[0] === 0xFF && finalBuffer[1] === 0xD8) {
-    const exifBytes = piexif.dump(exifObj);
-    finalBuffer = piexif.insert(exifBytes, finalBuffer);
-    fs.writeFileSync(localPath, finalBuffer);
-    console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
-  } else {
-    console.warn(`[WARNING] ${localPath} n'est pas un JPEG, EXIF ignorés.`);
-  }
-} catch (e) {
-  console.error(`[ERROR] Échec de l'insertion EXIF pour ${localPath}:`, e.message);
-}
-
-      console.log(`[DEBUG] EXIF2 pour ${localPath}:`, {
-      dateTaken: exifData.dateTaken,
-      latitude: exifData.latitude,
-      longitude: exifData.longitude,
-    });
-
-      image.destroy();
-      console.log(`[DEBUG] Image sauvegardée (redimensionnée + EXIF préservés): ${localPath}`);
-    } else {
-      fs.writeFileSync(localPath, imageBuffer);
-      console.log(`[DEBUG] Image sauvegardée (brute): ${localPath}`);
+    } catch (e) {
+      console.warn(`[MMM-NextcloudPhotos2] Impossible de géocoder les coordonnées (${latitude}, ${longitude}): ${e.message}`);
+      return null;
     }
-  }
+  },
 
-  // --- 4. Retour des données ---
-  return {
-    localPath,
-    localName,
-    folderName,
-    exifData: {
-      dateTaken: exifData.dateTaken,
-      location: location,
-    },
-  };
-},
+  /**
+ * Extrait les métadonnées EXIF d'un buffer ou d'un fichier.
+ */
+  extractExifData: async function (image) {
+    try {
+      const metadata = await exifr.parse(image, {
+        exif: true,
+        gps: true,
+        ifd0: true,
+      });
+
+      return {
+        dateTaken: metadata?.DateTimeOriginal,
+        latitude: metadata?.latitude,
+        longitude: metadata?.longitude,
+        userComment: metadata?.UserComment, // Champ personnalisé (ex: dossier + localisation)
+        imageDescription: metadata?.ImageDescription,
+      };
+    } catch (e) {
+      console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
+      return {
+        dateTaken: null,
+        latitude: null,
+        longitude: null,
+        userComment: null,
+        imageDescription: null,
+      };
+    }
+  },
+
+  /**
+   * Insère des métadonnées EXIF dans un buffer d'image.
+   * @param {Buffer} imageBuffer - Buffer de l'image source.
+   * @param {Object} exifData - Objet contenant les EXIF à insérer (dateTaken, latitude, longitude, folderName, location, etc.).
+   * @returns {Buffer} - Nouveau buffer avec les EXIF mis à jour.
+   */
+  insertExifData: function (imageBuffer, exifData) {
+    const exifObj = {
+      "Exif": {}, // Pour DateTimeOriginal, UserComment, etc.
+      "GPS": {},  // Pour les coordonnées GPS
+    };
+
+    // 1. Ajout du nom du dossier dans UserComment
+    if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
+
+    // 2. Date de prise de vue
+    if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
+
+    // 3. Coordonnées GPS
+    if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
+    }
+
+    // 2. Ajout de la localisation dans ImageDescription
+    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = exifData.location;
+
+    // 4. Génération des bytes EXIF et insertion dans le buffer
+    const exifBytes = piexif.dump(exifObj);
+    return piexif.insert(exifBytes, imageBuffer);
+  },
+
+  downloadPhoto: async function (photo) {
+    const token = await this.getValidToken();
+    const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
+
+    // SSRF protection
+    const downloadUrl = `${baseUrl}${photo.href}`;
+    const parsedDownload = new URL(downloadUrl);
+    const parsedBase = new URL(baseUrl);
+    if (parsedDownload.host !== parsedBase.host) {
+      throw new Error(`URL host mismatch: ${parsedDownload.host} !== ${parsedBase.host}`);
+    }
+
+    // Chemin local
+    const baseName = path.parse(photo.name).name;
+    const localName = sharp ? baseName + ".jpg" : photo.name;
+    const localPath = path.join(this.cacheDir, localName);
+    const folderName = photo.folderName;
+
+    // Vérification du chemin
+    const resolvedPath = path.resolve(localPath);
+    const resolvedCache = path.resolve(this.cacheDir);
+    if (!resolvedPath.startsWith(resolvedCache + path.sep) && resolvedPath !== resolvedCache) {
+      throw new Error(`Invalid filename, path traversal attempt: ${localName}`);
+    }
+
+    // Variables pour les métadonnées
+    let exifData = { dateTaken: null, latitude: null, longitude: null, location: null, folderName: null };
+    let location = null;
+    let imageBuffer = null;
+
+    // --- 1. Téléchargement (si nécessaire => si non présent dans le dossier cache local) ---
+    if (!fs.existsSync(localPath)) {
+      const response = await axios.get(downloadUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "arraybuffer",
+        timeout: AXIOS_TIMEOUT,
+        maxRedirects: 0,
+      });
+      imageBuffer = response.data;
+
+      // 1. Extraction des EXIF (distant)
+      exifData = await extractExifData(imageBuffer);
+
+      // --- 2. Redimensionnement (si nécessaire) ---
+      if (sharp) {
+        const image = sharp(imageBuffer, {
+          limitInputPixels: 80000000,
+        });
+
+        // Traitement Sharp (redimensionnement, rotation, etc.)
+        const processedBuffer = await image
+          .rotate()
+          .resize(this.config.maxWidth || 1920, this.config.maxHeight || 1080, {
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .jpeg({
+            quality: this.config.imageQuality || 80,
+            progressive: true,
+          })
+          .toBuffer(); // Récupère le buffer traité
+
+          // Écrit le fichier sur le disque
+          fs.writeFileSync(localPath, processedBuffer);
+        console.log(`[DEBUG] Image sauvegardée (redimensionnée): ${localPath}`);
+         
+         
+          // 4. Insertion des EXIF sur le buffer
+        processedBuffer = insertExifData(processedBuffer, exifData);
+
+        // Réécrit le fichier avec les EXIF
+        fs.writeFileSync(localPath, processedBuffer);
+        console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
+
+        console.log(`[DEBUG] EXIF distant pour ${localPath}:`, {
+          dateTaken: exifData.dateTaken,
+          latitude: exifData.latitude,
+          longitude: exifData.longitude,
+        });
+
+        image.destroy();
+        console.log(`[DEBUG] Image sauvegardée (redimensionnée + EXIF préservés): ${localPath}`);
+      } else {
+        fs.writeFileSync(localPath, imageBuffer);
+        console.log(`[DEBUG] Image sauvegardée (brute): ${localPath}`);
+      }
+    }
+    else { // si fichier présent en local
+      // Lit le fichier local si déjà en cache
+      imageBuffer = fs.readFileSync(localPath);
+    }
+
+      // 1. Extraction des EXIF (local)
+      exifData = await extractExifData(imageBuffer);
+      // --- 2. Extraction des EXIF (une seule fois) ---
+    
+
+        console.log(`[DEBUG] LOCAL EXIF pour ${photo.name}:`, {
+          dateTaken: exifData.dateTaken,
+          location: exifData.location,
+          longitude: exifData.folderName,
+        });
+
+    // --- 4. Retour des données ---
+    return {
+      localPath,
+      localName,
+      exifData,
+    };
+  },
   // ─── Sync Logic ───────────────────────────────────────────────
 
   startSync: function () {

@@ -180,7 +180,7 @@ Module.register("MMM-NextcloudPhotos2", {
       infoText.classList.add("infoText");
       let fileLocation = document.createElement("div");
       fileLocation.classList.add("fileLocation");
-      fileLocation.innerHTML = photo.location;
+      if(photo.location) fileLocation.innerHTML = photo.location.city + " / " + photo.location.country;
       let fileLocation2 = document.createElement("div");
       fileLocation2.classList.add("fileLocation");
       fileLocation2.innerHTML = photo.path;
