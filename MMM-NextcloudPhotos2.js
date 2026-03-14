@@ -175,12 +175,12 @@ Module.register("MMM-NextcloudPhotos2", {
       albumTitle.innerHTML = photo.folderName;
       let photoTime = document.createElement("div");
       photoTime.classList.add("photoTime");
-      photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(photo.dateTaken).fromNow() : moment(photo.dateTaken).format(self.config.timeFormat);
+      photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(photo.dateTaken2).fromNow() : moment(photo.dateTaken2).format(self.config.timeFormat);
       let infoText = document.createElement("div");
       infoText.classList.add("infoText");
       let fileLocation = document.createElement("div");
       fileLocation.classList.add("fileLocation");
-      if(photo.location) fileLocation.innerHTML = photo.location.city + " / " + photo.location.country;
+      if(photo.location) fileLocation.innerHTML = photo.location;
       let fileLocation2 = document.createElement("div");
       fileLocation2.classList.add("fileLocation");
       fileLocation2.innerHTML = photo.path;

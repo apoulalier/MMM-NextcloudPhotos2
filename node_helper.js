@@ -219,10 +219,9 @@ module.exports = NodeHelper.create({
 
       // Extrait la ville et le pays
       const address = geoResponse.data.address;
-      return {
-        city: address.city || address.town || address.village || address.hamlet,
-        country: address.country,
-      };
+      const city = address.city || address.town || address.village || address.hamlet;
+      const country = address.country;
+      return city + " | " + country;
     } catch (e) {
       console.warn(`[MMM-NextcloudPhotos2] Impossible de géocoder les coordonnées (${latitude}, ${longitude}): ${e.message}`);
       return null;
@@ -297,7 +296,7 @@ module.exports = NodeHelper.create({
       let geo = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
       console.warn("[WARN] Insertion exif :", exifData);
       console.warn("[WARN] Insertion GEO :", geo);
-      //exifObj["Exif"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(this._convertDecimalToDMS(exifData.latitude), this._convertDecimalToDMS(exifData.longitude));
+      exifObj["Exif"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
     }
 
 
