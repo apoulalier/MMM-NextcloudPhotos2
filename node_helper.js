@@ -408,6 +408,16 @@ _convertDecimalToDMS: function(decimal) {
           folder: exifData.folderName,
         });
 
+         exifData2 = await this.extractExifData(processedBuffer);
+         console.log(`[DEBUG] EXIF après SHARP pour ${localPath}:`, {
+          dateTaken: exifData2.dateTaken,
+          latitude: exifData2.latitude,
+          longitude: exifData2.longitude,
+          position: exifData2.location,
+          folder: exifData2.folderName,
+        });
+
+
         // 4. Insertion des EXIF sur le buffer
         processedBuffer = this.insertExifData(processedBuffer, exifData);
 
