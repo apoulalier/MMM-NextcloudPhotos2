@@ -332,8 +332,8 @@ module.exports = NodeHelper.create({
     if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
 
     if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
-       exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDMS(exifData.latitude);
-      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDMS(exifData.longitude);
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
       exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
       exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
       exifObj["Exif"][piexif.ExifIFD.ImageDescription] = this.geocodeCoordinates(exifData.latitude, exifData.longitude);
@@ -343,6 +343,7 @@ module.exports = NodeHelper.create({
     try {
       const exifBytes = piexif.dump(exifObj);
       // 5. Injecter dans l'image et retourner un Buffer Node.js
+      console.warn("[WARN] Insertion EXIF (piexif) :", exifObj);
       const updatedBinary = piexif.insert(exifBytes, binaryString);
       return Buffer.from(updatedBinary, "binary");
     } catch (exifError) {
