@@ -294,7 +294,7 @@ module.exports = NodeHelper.create({
       exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDms(exifData.longitude);
       exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
       exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
-      exifObj["0th"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
+      exifObj["0th"][piexif.ImageIFD.ImageDescription] = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
     }
 
 
