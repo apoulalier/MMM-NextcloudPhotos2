@@ -183,8 +183,8 @@ Module.register("MMM-NextcloudPhotos2", {
       fileLocation.innerHTML = photo.location;
 
       infoText.appendChild(albumTitle);
-      infoText.appendChild(photoTime);
-      infoText.appendChild(fileLocation);
+      if(photo.dateTaken) infoText.appendChild(photoTime);
+      if(photo.location) infoText.appendChild(fileLocation);
       info.appendChild(infoText);
 
       Log.info("[MMM-NextcloudPhotos2] Show picture : " + photo.name);
