@@ -261,15 +261,8 @@ module.exports = NodeHelper.create({
 
   extractExifData: async function (file) {
     try {
-      // 1. Lire le fichier en ArrayBuffer
-      const arrayBuffer = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsArrayBuffer(file);
-      });
-
-      // 2. Charger les EXIF avec piexifjs
-      const exifData = piexif.load(new Uint8Array(arrayBuffer));
+      const arrayBuffer = await fs.promises.readFile(file);
+      const exifData = piexif.load(new Uint8Array(arrayBuffer).buffer);
 
       // 3. Extraire les données utiles
       const gps = exifData.GPS || {};
