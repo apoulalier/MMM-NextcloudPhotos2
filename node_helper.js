@@ -191,7 +191,7 @@ module.exports = NodeHelper.create({
           contentType: contentType,
           size: parseInt(props.getcontentlength, 10) || 0,
           lastModified: props.getlastmodified || "",
-          folderName : baseFolderPath,
+          folderName: baseFolderPath,
         });
       }
     }
@@ -232,7 +232,7 @@ module.exports = NodeHelper.create({
   /**
  * Extrait les métadonnées EXIF d'un buffer ou d'un fichier.
  */
-  extractExifData: async function (image) {
+  extractExifData_old: async function (image) {
     try {
       const metadata = await piexif.load(image, {
         exif: true,
@@ -256,6 +256,35 @@ module.exports = NodeHelper.create({
         folderName: null,
         location: null,
       };
+    }
+  },
+
+  extractExifData: async function (file) {
+    try {
+      // 1. Lire le fichier en ArrayBuffer
+      const arrayBuffer = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsArrayBuffer(file);
+      });
+
+      // 2. Charger les EXIF avec piexifjs
+      const exifData = piexif.load(new Uint8Array(arrayBuffer));
+
+      // 3. Extraire les données utiles
+      const gps = exifData.GPS || {};
+      const exif = exifData.Exif || {};
+
+      return {
+        dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
+        latitude: gps[piexif.GPSIFD.GPSLatitude] ? gps[piexif.GPSIFD.GPSLatitude][0] / gps[piexif.GPSIFD.GPSLatitude][1] : null,
+        longitude: gps[piexif.GPSIFD.GPSLongitude] ? gps[piexif.GPSIFD.GPSLongitude][0] / gps[piexif.GPSIFD.GPSLongitude][1] : null,
+        folderName: exif[piexif.ExifIFD.UserComment] || null,
+        location: exif[piexif.ExifIFD.ImageDescription] || null,
+      };
+    } catch (e) {
+      console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
+      return { dateTaken: null, latitude: null, longitude: null, folderName: null, location: null };
     }
   },
 
@@ -293,48 +322,48 @@ module.exports = NodeHelper.create({
     return piexif.insert(exifBytes, imageBuffer);
   },
   insertExifData: function (imageBuffer, exifData) {
-  try {
-    // Afficher les premiers octets du buffer pour vérifier la signature JPEG
-    const firstBytes = imageBuffer.slice(0, 10).toString('hex');
-    console.log(`[DEBUG] Premiers octets du buffer : ${firstBytes}`); // Doit commencer par FFD8 (signature JPEG)
+    try {
+      // Afficher les premiers octets du buffer pour vérifier la signature JPEG
+      const firstBytes = imageBuffer.slice(0, 10).toString('hex');
+      console.log(`[DEBUG] Premiers octets du buffer : ${firstBytes}`); // Doit commencer par FFD8 (signature JPEG)
 
-    // Vérification explicite de la signature JPEG
-    if (!(imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8)) {
-      console.warn("[WARNING] Le buffer n'a pas la signature JPEG (FFD8). EXIF non modifiés.");
+      // Vérification explicite de la signature JPEG
+      if (!(imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8)) {
+        console.warn("[WARNING] Le buffer n'a pas la signature JPEG (FFD8). EXIF non modifiés.");
+        return imageBuffer;
+      }
+
+      const exifObj = {
+        "Exif": {},
+        "GPS": {},
+      };
+
+      if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
+      if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
+
+      if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
+        exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
+        exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
+        exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
+        exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
+      }
+
+      if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = exifData.location;
+
+      // 3. Insertion des EXIF avec gestion d'erreurs
+      try {
+        const exifBytes = piexif.dump(exifObj);
+        return piexif.insert(exifBytes, imageBuffer);
+      } catch (exifError) {
+        console.error("[ERROR] Échec de l'insertion EXIF (piexif) :", exifError.message);
+        console.error("[DEBUG] Objet EXIF généré :", exifObj); // Log pour débogage
+        return imageBuffer; // Retourne le buffer original en cas d'échec
+      }
+    } catch (error) {
+      console.error("[ERROR] Erreur inattendue dans insertExifData :", error.message);
       return imageBuffer;
     }
-
-    const exifObj = {
-      "Exif": {},
-      "GPS": {},
-    };
-
-    if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
-    if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
-
-    if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
-      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
-      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
-      exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
-      exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
-    }
-
-    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = exifData.location;
-
-     // 3. Insertion des EXIF avec gestion d'erreurs
-    try {
-      const exifBytes = piexif.dump(exifObj);
-      return piexif.insert(exifBytes, imageBuffer);
-    } catch (exifError) {
-      console.error("[ERROR] Échec de l'insertion EXIF (piexif) :", exifError.message);
-      console.error("[DEBUG] Objet EXIF généré :", exifObj); // Log pour débogage
-      return imageBuffer; // Retourne le buffer original en cas d'échec
-    }
-  } catch (error) {
-    console.error("[ERROR] Erreur inattendue dans insertExifData :", error.message);
-    return imageBuffer;
-  }
-},
+  },
 
 
   downloadPhoto: async function (photo) {
@@ -398,30 +427,30 @@ module.exports = NodeHelper.create({
           })
           .toBuffer(); // Récupère le buffer traité
 
-          // Écrit le fichier sur le disque
-          fs.writeFileSync(localPath, processedBuffer);
+        // Écrit le fichier sur le disque
+        fs.writeFileSync(localPath, processedBuffer);
         console.log(`[DEBUG] Image sauvegardée (redimensionnée): ${localPath}`);
-         
-          console.log(`[DEBUG] EXIF distant pour ${localPath}:`, {
+
+        console.log(`[DEBUG] EXIF distant pour ${localPath}:`, {
           dateTaken: exifData.dateTaken,
           latitude: exifData.latitude,
           longitude: exifData.longitude,
-          position : exifData.location,
-          folder : exifData.folderName,
+          position: exifData.location,
+          folder: exifData.folderName,
         });
 
         // Log des premiers octets du buffer traité
-const firstBytesAfterSharp = processedBuffer.slice(0, 10).toString('hex');
-console.log(`[DEBUG] Premiers octets après Sharp : ${firstBytesAfterSharp}`); // Doit commencer par FFD8
+        const firstBytesAfterSharp = processedBuffer.slice(0, 10).toString('hex');
+        console.log(`[DEBUG] Premiers octets après Sharp : ${firstBytesAfterSharp}`); // Doit commencer par FFD8
 
-          // 4. Insertion des EXIF sur le buffer
+        // 4. Insertion des EXIF sur le buffer
         processedBuffer = this.insertExifData(processedBuffer, exifData);
 
         // Réécrit le fichier avec les EXIF
         fs.writeFileSync(localPath, processedBuffer);
         console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
 
-       
+
 
         image.destroy();
         console.log(`[DEBUG] Image sauvegardée (redimensionnée + EXIF préservés): ${localPath}`);
@@ -435,16 +464,16 @@ console.log(`[DEBUG] Premiers octets après Sharp : ${firstBytesAfterSharp}`); /
       imageBuffer = fs.readFileSync(localPath);
     }
 
-      // 1. Extraction des EXIF (local)
-      exifData = await this.extractExifData(imageBuffer);
-      // --- 2. Extraction des EXIF (une seule fois) ---
-    
+    // 1. Extraction des EXIF (local)
+    exifData = await this.extractExifData(imageBuffer);
+    // --- 2. Extraction des EXIF (une seule fois) ---
 
-        console.log(`[DEBUG] LOCAL EXIF pour ${photo.name}:`, {
-          dateTaken: exifData.dateTaken,
-          location: exifData.location,
-          longitude: exifData.folderName,
-        });
+
+    console.log(`[DEBUG] LOCAL EXIF pour ${photo.name}:`, {
+      dateTaken: exifData.dateTaken,
+      location: exifData.location,
+      longitude: exifData.folderName,
+    });
 
     // --- 4. Retour des données ---
     return {
