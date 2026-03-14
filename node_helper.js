@@ -260,30 +260,30 @@ module.exports = NodeHelper.create({
   },
 
   extractExifData: async function (arrayBuffer) {
-   try {
-    const buffer = Buffer.from(arrayBuffer);
-    const binaryString = buffer.toString("binary");
-    const exifData = piexif.load(binaryString);
+    try {
+      const buffer = Buffer.from(arrayBuffer);
+      const binaryString = buffer.toString("binary");
+      const exifData = piexif.load(binaryString);
 
-    if (!exifData) {
-      throw new Error("Aucune donnée EXIF trouvée dans l'image");
+      if (!exifData) {
+        throw new Error("Aucune donnée EXIF trouvée dans l'image");
+      }
+
+      const gps = exifData.GPS || {};
+      const exif = exifData.Exif || {};
+
+      return {
+        dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
+        latitude: gps[piexif.GPSIFD.GPSLatitude] ? gps[piexif.GPSIFD.GPSLatitude] : null,
+        longitude: gps[piexif.GPSIFD.GPSLongitude] ? gps[piexif.GPSIFD.GPSLongitude] : null,
+        folderName: exif[piexif.ExifIFD.UserComment] || null,
+        location: exif[piexif.ExifIFD.ImageDescription] || null,
+      };
+    } catch (e) {
+      console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
+      return { dateTaken: null, latitude: null, longitude: null, folderName: null, location: null };
     }
-
-    const gps = exifData.GPS || {};
-    const exif = exifData.Exif || {};
-
-    return {
-      dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
-      latitude: gps[piexif.GPSIFD.GPSLatitude] ? gps[piexif.GPSIFD.GPSLatitude][0] / gps[piexif.GPSIFD.GPSLatitude][1] : null,
-      longitude: gps[piexif.GPSIFD.GPSLongitude] ? gps[piexif.GPSIFD.GPSLongitude][0] / gps[piexif.GPSIFD.GPSLongitude][1] : null,
-      folderName: exif[piexif.ExifIFD.UserComment] || null,
-      location: exif[piexif.ExifIFD.ImageDescription] || null,
-    };
-  } catch (e) {
-    console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
-    return { dateTaken: null, latitude: null, longitude: null, folderName: null, location: null };
-  }
-},
+  },
 
   /**
    * Insère des métadonnées EXIF dans un buffer d'image.
@@ -319,48 +319,38 @@ module.exports = NodeHelper.create({
     return piexif.insert(exifBytes, imageBuffer);
   },
   insertExifData: function (imageBuffer, exifData) {
-    try {
-      // Afficher les premiers octets du buffer pour vérifier la signature JPEG
-      const firstBytes = imageBuffer.slice(0, 10).toString('hex');
-      console.log(`[DEBUG] Premiers octets du buffer : ${firstBytes}`); // Doit commencer par FFD8 (signature JPEG)
+    // 1. Convertir en binary string (format attendu par piexifjs)
+    const inputBuffer = Buffer.from(imageBuffer);
+    const binaryString = inputBuffer.toString("binary");
 
-      // Vérification explicite de la signature JPEG
-      if (!(imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8)) {
-        console.warn("[WARNING] Le buffer n'a pas la signature JPEG (FFD8). EXIF non modifiés.");
-        return imageBuffer;
-      }
+    const exifObj = {
+      "Exif": {},
+      "GPS": {},
+    };
 
-      const exifObj = {
-        "Exif": {},
-        "GPS": {},
-      };
+    if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
+    if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
 
-      if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
-      if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
-
-      if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
-        exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
-        exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
-        exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
-        exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
-      }
-
-      if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = exifData.location;
-
-      // 3. Insertion des EXIF avec gestion d'erreurs
-      try {
-        const exifBytes = piexif.dump(exifObj);
-        return piexif.insert(exifBytes, imageBuffer);
-      } catch (exifError) {
-        console.error("[ERROR] Échec de l'insertion EXIF (piexif) :", exifError.message);
-        console.error("[DEBUG] Objet EXIF généré :", exifObj); // Log pour débogage
-        return imageBuffer; // Retourne le buffer original en cas d'échec
-      }
-    } catch (error) {
-      console.error("[ERROR] Erreur inattendue dans insertExifData :", error.message);
-      return imageBuffer;
+    if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
     }
-  },
+
+    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = this.geocodeCoordinates(exifData.latitude, exifData.longitude);
+
+    try {
+      const exifBytes = piexif.dump(exifObj);
+      // 5. Injecter dans l'image et retourner un Buffer Node.js
+      const updatedBinary = piexif.insert(exifBytes, binaryString);
+      return Buffer.from(updatedBinary, "binary");
+    } catch (exifError) {
+      console.error("[ERROR] Échec de l'insertion EXIF (piexif) :", exifError.message);
+      console.error("[DEBUG] Objet EXIF généré :", exifObj); // Log pour débogage
+      return imageBuffer; // Retourne le buffer original en cas d'échec
+    }
+},
 
 
   downloadPhoto: async function (photo) {
