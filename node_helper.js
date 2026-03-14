@@ -245,10 +245,21 @@ module.exports = NodeHelper.create({
       const gps = exifData.GPS || {};
       const exif = exifData.Exif || {};
 
+      const latDMS = gps[piexif.GPSIFD.GPSLatitude];
+      const latRef = gps[piexif.GPSIFD.GPSLatitudeRef];
+      const lonDMS = gps[piexif.GPSIFD.GPSLongitude];
+      const lonRef = gps[piexif.GPSIFD.GPSLongitudeRef];
+
+      let latitude = this._convertDmsToDecimal(latDMS);
+      let longitude = this._convertDmsToDecimal(lonDMS);
+
+      if (latitude !== null && latRef === "S") latitude = -latitude;
+      if (longitude !== null && lonRef === "W") longitude = -longitude;
+
       return {
         dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
-        latitude: gps[piexif.GPSIFD.GPSLatitude] || null,
-        longitude: gps[piexif.GPSIFD.GPSLongitude] || null,
+        latitude: latitude || null,
+        longitude: longitude || null,
         folderName: exif[piexif.ExifIFD.UserComment] || null,
         location: exif[piexif.ExifIFD.ImageDescription] || null,
         dateTaken2: exif[piexif.ExifIFD.DateTimeOriginal] ? exif[piexif.ExifIFD.DateTimeOriginal].replace(/:/g, '-').replace(' ', 'T') : null,
@@ -279,8 +290,8 @@ module.exports = NodeHelper.create({
 
     if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
       exifObj["GPS"] = {}; // Créer la clé GPS uniquement si nécessaire
-      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDMS(exifData.latitude);
-      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDMS(exifData.longitude);
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDms(exifData.latitude);
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDms(exifData.longitude);
       exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
       exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
       let geo = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
@@ -304,12 +315,25 @@ module.exports = NodeHelper.create({
   },
 
   // Helper pour convertir les coordonnées décimales en DMS (degrés, minutes, secondes)
-  _convertDecimalToDMS: function (decimal) {
-    const absDecimal = Math.abs(decimal);
-    const degrees = Math.floor(absDecimal);
-    const minutes = Math.floor((absDecimal - degrees) * 60);
-    const seconds = ((absDecimal - degrees - minutes / 60) * 3600).toFixed(2);
-    return [[degrees, 1], [minutes, 1], [Number(seconds), 100]];
+  _convertDecimalToDms: function (decimal) {
+    const abs = Math.abs(decimal);
+    const deg = Math.floor(abs);
+    const minFloat = (abs - deg) * 60;
+    const min = Math.floor(minFloat);
+    const sec = (minFloat - min) * 60;
+    return [
+      [deg, 1],
+      [min, 1],
+      [Math.round(sec * 100), 100],
+    ];
+  },
+
+  _convertDmsToDecimal: function (dms) {
+    if (!Array.isArray(dms) || dms.length < 3) return null;
+    const deg = dms[0][0] / dms[0][1];
+    const min = dms[1][0] / dms[1][1];
+    const sec = dms[2][0] / dms[2][1];
+    return deg + min / 60 + sec / 3600;
   },
 
   downloadPhoto: async function (photo) {
@@ -375,7 +399,7 @@ module.exports = NodeHelper.create({
 
         console.warn(`[DEBUG] EXIF distant pour ${localPath}:`, {
           dateTaken: exifData.dateTaken,
-          date2 : exifData.dateTaken2,
+          date2: exifData.dateTaken2,
           latitude: exifData.latitude,
           longitude: exifData.longitude,
           position: exifData.location,
