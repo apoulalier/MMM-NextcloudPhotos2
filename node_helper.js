@@ -362,6 +362,8 @@ module.exports = NodeHelper.create({
           dateTaken: exifData.dateTaken,
           latitude: exifData.latitude,
           longitude: exifData.longitude,
+          position : exifData.location,
+          folder : exifData.folderName,
         });
           // 4. Insertion des EXIF sur le buffer
         processedBuffer = this.insertExifData(processedBuffer, exifData);
