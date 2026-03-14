@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const xml2js = require("xml2js");
 const exifr = require('exifr');
+const piexif = require("piexifjs");
 
 let sharp;
 try {
@@ -227,8 +228,8 @@ geocodeCoordinates: async function (latitude, longitude) {
     return null;
   }
 },
+// ... (le reste de vos imports et variables)
 
-// ─── Nextcloud API - File Download ────────────────────────────
 downloadPhoto: async function (photo) {
   const token = await this.getValidToken();
   const baseUrl = (this.config.nextcloudUrl || this.tokens.nextcloud_url).replace(/\/+$/, "");
@@ -259,7 +260,7 @@ downloadPhoto: async function (photo) {
   let location = null;
   let imageBuffer = null;
 
-  // --- 1. Téléchargement (si nécessaire) ---
+  // --- 1. Téléchargement (si nécessaire => si non présent dans le dossier cache local) ---
   if (!fs.existsSync(localPath)) {
     const response = await axios.get(downloadUrl, {
       headers: { Authorization: `Bearer ${token}` },
@@ -282,7 +283,7 @@ downloadPhoto: async function (photo) {
     });
 
     exifData = {
-      dateTaken: metadata.DateTime,
+      dateTaken: metadata.DateTimeOriginal || photo.lastModified,
       latitude: metadata.latitude,
       longitude: metadata.longitude,
     };
@@ -299,18 +300,19 @@ downloadPhoto: async function (photo) {
     }
   } catch (e) {
     console.warn(`[WARNING] Impossible de lire les EXIF pour ${photo.name}: ${e.message}`);
-    exifData.dateTaken = photo.lastModified; // Fallback si pas d'EXIF
+    exifData.dateTaken = photo.lastModified;
   }
 
   // --- 3. Redimensionnement (si nécessaire) ---
   if (!fs.existsSync(localPath)) {
     if (sharp) {
       const image = sharp(imageBuffer, {
-        limitInputPixels: 8000000, // Limite la mémoire
+        limitInputPixels: 80000000,
       });
 
+      // Traitement Sharp (redimensionnement, rotation, etc.)
       await image
-        .rotate() // Auto-rotation basée sur les EXIF
+        .rotate()
         .resize(this.config.maxWidth || 1920, this.config.maxHeight || 1080, {
           fit: "inside",
           withoutEnlargement: true,
@@ -321,8 +323,42 @@ downloadPhoto: async function (photo) {
         })
         .toFile(localPath);
 
-      image.destroy(); // Libère la mémoire
-      console.log(`[DEBUG] Image sauvegardée (redimensionnée): ${localPath}`);
+      // --- NOUVEAU : Réinjection des EXIF après Sharp ---
+      const exifObj = {
+        "0th": {},
+        "Exif": {},
+        "GPS": {},
+        "1st": {},
+        "thumbnail": null,
+      };
+
+      // Remplir les champs EXIF pertinents
+      if (exifData.dateTaken) {
+        exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
+      }
+      if (exifData.latitude && exifData.longitude) {
+        exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = piexif.GPSHelper.degToDms(exifData.latitude);
+        exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = piexif.GPSHelper.degToDms(exifData.longitude);
+        exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
+        exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
+      }
+
+      // Générer les bytes EXIF
+      const exifBytes = piexif.dump(exifObj);
+
+      // Réécrire le fichier avec les EXIF
+      let finalBuffer = fs.readFileSync(localPath);
+      finalBuffer = piexif.insert(exifBytes, finalBuffer);
+      fs.writeFileSync(localPath, finalBuffer);
+
+      console.log(`[DEBUG] EXIF2 pour ${localPath}:`, {
+      dateTaken: exifData.dateTaken,
+      latitude: exifData.latitude,
+      longitude: exifData.longitude,
+    });
+
+      image.destroy();
+      console.log(`[DEBUG] Image sauvegardée (redimensionnée + EXIF préservés): ${localPath}`);
     } else {
       fs.writeFileSync(localPath, imageBuffer);
       console.log(`[DEBUG] Image sauvegardée (brute): ${localPath}`);
@@ -340,7 +376,6 @@ downloadPhoto: async function (photo) {
     },
   };
 },
-
   // ─── Sync Logic ───────────────────────────────────────────────
 
   startSync: function () {
