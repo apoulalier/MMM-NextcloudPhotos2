@@ -172,7 +172,7 @@ Module.register("MMM-NextcloudPhotos2", {
       info.innerHTML = "";
       let albumTitle = document.createElement("div");
       albumTitle.classList.add("albumTitle");
-      albumTitle.innerHTML = '<i class="fas fa-folder"></i>' + photo.folderName;
+      albumTitle.innerHTML = '<i class="fas fa-folder"></i>&nbsp;' + photo.folderName;
       let photoTime = document.createElement("div");
       photoTime.classList.add("photoTime");
       photoTime.innerHTML = self.config.timeFormat === "relative" ? moment(photo.dateTaken).fromNow() : moment(photo.dateTaken).format(self.config.timeFormat);
@@ -180,7 +180,7 @@ Module.register("MMM-NextcloudPhotos2", {
       infoText.classList.add("infoText");
       let fileLocation = document.createElement("div");
       fileLocation.classList.add("fileLocation");
-      fileLocation.innerHTML = '<i class="fas fa-map"></i>' + photo.location;
+      fileLocation.innerHTML = '<i class="fas fa-map"></i>&nbsp;' + photo.location;
 
       infoText.appendChild(albumTitle);
       if(photo.dateTaken) infoText.appendChild(photoTime);
