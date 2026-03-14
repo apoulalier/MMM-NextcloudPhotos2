@@ -261,13 +261,28 @@ module.exports = NodeHelper.create({
 
   extractExifData: async function (arrayBuffer) {
   try {
-    // 1. Convertir l'ArrayBuffer en Uint8Array
+    // 1. Vérifier que le buffer est valide
+    if (!(arrayBuffer instanceof ArrayBuffer) || arrayBuffer.byteLength === 0) {
+      throw new Error("Buffer invalide ou vide");
+    }
+
+    // 2. Convertir en Uint8Array
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    // 2. Charger les EXIF avec piexifjs
+    // 3. Vérifier que c'est un JPEG (débute par FF D8 FF)
+    if (uint8Array[0] !== 0xFF || uint8Array[1] !== 0xD8 || uint8Array[2] !== 0xFF) {
+      throw new Error("Le buffer ne semble pas être un JPEG valide");
+    }
+
+    // 4. Charger les EXIF
     const exifData = piexif.load(uint8Array.buffer);
 
-    // 3. Extraire les données utiles
+    // 5. Vérifier que exifData existe
+    if (!exifData) {
+      throw new Error("Aucune donnée EXIF trouvée dans l'image");
+    }
+
+    // 6. Extraire les données
     const gps = exifData.GPS || {};
     const exif = exifData.Exif || {};
 
