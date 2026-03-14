@@ -281,6 +281,7 @@ module.exports = NodeHelper.create({
     const binaryString = inputBuffer.toString("binary");
 
     const exifObj = {
+      "0th":   {},
       "Exif": {},
     };
 
@@ -288,15 +289,12 @@ module.exports = NodeHelper.create({
     if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
 
     if (exifData.latitude != null && exifData.longitude != null) {
-      //exifObj["GPS"] = {}; // Créer la clé GPS uniquement si nécessaire
-      //exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDms(exifData.latitude);
-      //exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDms(exifData.longitude);
-      //exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
-      //exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
-      let geo = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
-      console.warn("[WARN] Insertion exif :", exifData);
-      console.warn("[WARN] Insertion GEO :", geo);
-      exifObj["Exif"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
+      exifObj["GPS"] = {}; // Créer la clé GPS uniquement si nécessaire
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDms(exifData.latitude);
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDms(exifData.longitude);
+      exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
+      exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
+      exifObj["0th"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(exifData.latitude, exifData.longitude);
     }
 
 
