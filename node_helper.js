@@ -244,8 +244,8 @@ module.exports = NodeHelper.create({
         dateTaken: metadata?.DateTimeOriginal,
         latitude: metadata?.latitude,
         longitude: metadata?.longitude,
-        userComment: metadata?.UserComment, // Champ personnalisé (ex: dossier + localisation)
-        imageDescription: metadata?.ImageDescription,
+        folderName: metadata?.UserComment, // Champ personnalisé (ex: dossier + localisation)
+        location: metadata?.ImageDescription,
       };
     } catch (e) {
       console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
@@ -253,8 +253,8 @@ module.exports = NodeHelper.create({
         dateTaken: null,
         latitude: null,
         longitude: null,
-        userComment: null,
-        imageDescription: null,
+        folderName: null,
+        location: null,
       };
     }
   },
@@ -334,7 +334,7 @@ module.exports = NodeHelper.create({
       imageBuffer = response.data;
 
       // 1. Extraction des EXIF (distant)
-      exifData = await extractExifData(imageBuffer);
+      exifData = await this.extractExifData(imageBuffer);
 
       // --- 2. Redimensionnement (si nécessaire) ---
       if (sharp) {
@@ -361,7 +361,7 @@ module.exports = NodeHelper.create({
          
          
           // 4. Insertion des EXIF sur le buffer
-        processedBuffer = insertExifData(processedBuffer, exifData);
+        processedBuffer = this.insertExifData(processedBuffer, exifData);
 
         // Réécrit le fichier avec les EXIF
         fs.writeFileSync(localPath, processedBuffer);
@@ -386,7 +386,7 @@ module.exports = NodeHelper.create({
     }
 
       // 1. Extraction des EXIF (local)
-      exifData = await extractExifData(imageBuffer);
+      exifData = await this.extractExifData(imageBuffer);
       // --- 2. Extraction des EXIF (une seule fois) ---
     
 
