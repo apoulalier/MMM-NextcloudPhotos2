@@ -322,10 +322,17 @@ module.exports = NodeHelper.create({
 
     if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = exifData.location;
 
-    const exifBytes = piexif.dump(exifObj);
-    return piexif.insert(exifBytes, imageBuffer);
+     // 3. Insertion des EXIF avec gestion d'erreurs
+    try {
+      const exifBytes = piexif.dump(exifObj);
+      return piexif.insert(exifBytes, imageBuffer);
+    } catch (exifError) {
+      console.error("[ERROR] Échec de l'insertion EXIF (piexif) :", exifError.message);
+      console.error("[DEBUG] Objet EXIF généré :", exifObj); // Log pour débogage
+      return imageBuffer; // Retourne le buffer original en cas d'échec
+    }
   } catch (error) {
-    console.error("[ERROR] Erreur lors de l'insertion des EXIF :", error.message);
+    console.error("[ERROR] Erreur inattendue dans insertExifData :", error.message);
     return imageBuffer;
   }
 },
@@ -355,9 +362,8 @@ module.exports = NodeHelper.create({
       throw new Error(`Invalid filename, path traversal attempt: ${localName}`);
     }
 
-    console.log(`[DEBUG] FodlerName here  ${photo.folderName}`);
     // Variables pour les métadonnées
-    let exifData = { dateTaken: null, latitude: null, longitude: null, location: null, folderName:  photo.folderName };
+    let exifData = { dateTaken: null, latitude: null, longitude: null, location: null, folderName: null };
     let imageBuffer = null;
 
     // --- 1. Téléchargement (si nécessaire => si non présent dans le dossier cache local) ---
@@ -372,6 +378,7 @@ module.exports = NodeHelper.create({
 
       // 1. Extraction des EXIF (distant)
       exifData = await this.extractExifData(imageBuffer);
+      exifData.folderName = photo.folderName;
 
       // --- 2. Redimensionnement (si nécessaire) ---
       if (sharp) {
