@@ -259,33 +259,40 @@ module.exports = NodeHelper.create({
     }
   },
 
-  extractExifData: async function (file) {
-    try {
-      // 1. Lire le fichier en Buffer
-      const buffer = await fs.promises.readFile(file);
+  extractExifData: async function (arrayBuffer) {
+  try {
+    // 1. Convertir l'ArrayBuffer en Uint8Array
+    const uint8Array = new Uint8Array(arrayBuffer);
 
-      // 2. Convertir en Uint8Array
-      const uint8Array = new Uint8Array(buffer);
+    // 2. Charger les EXIF avec piexifjs
+    const exifData = piexif.load(uint8Array.buffer);
 
-      // 3. Charger les EXIF
-      const exifData = piexif.load(uint8Array.buffer);
+    // 3. Extraire les données utiles
+    const gps = exifData.GPS || {};
+    const exif = exifData.Exif || {};
 
-      // 4. Extraire les données
-      const gps = exifData.GPS || {};
-      const exif = exifData.Exif || {};
-
-      return {
-        dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
-        latitude: gps[piexif.GPSIFD.GPSLatitude] ? gps[piexif.GPSIFD.GPSLatitude][0] / gps[piexif.GPSIFD.GPSLatitude][1] : null,
-        longitude: gps[piexif.GPSIFD.GPSLongitude] ? gps[piexif.GPSIFD.GPSLongitude][0] / gps[piexif.GPSIFD.GPSLongitude][1] : null,
-        folderName: exif[piexif.ExifIFD.UserComment] || null,
-        location: exif[piexif.ExifIFD.ImageDescription] || null,
-      };
-    } catch (e) {
-      console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
-      return { dateTaken: null, latitude: null, longitude: null, folderName: null, location: null };
-    }
-  },
+    return {
+      dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
+      latitude: gps[piexif.GPSIFD.GPSLatitude]
+        ? gps[piexif.GPSIFD.GPSLatitude][0] / gps[piexif.GPSIFD.GPSLatitude][1]
+        : null,
+      longitude: gps[piexif.GPSIFD.GPSLongitude]
+        ? gps[piexif.GPSIFD.GPSLongitude][0] / gps[piexif.GPSIFD.GPSLongitude][1]
+        : null,
+      folderName: exif[piexif.ExifIFD.UserComment] || null,
+      location: exif[piexif.ExifIFD.ImageDescription] || null,
+    };
+  } catch (e) {
+    console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
+    return {
+      dateTaken: null,
+      latitude: null,
+      longitude: null,
+      folderName: null,
+      location: null,
+    };
+  }
+},
 
   /**
    * Insère des métadonnées EXIF dans un buffer d'image.
