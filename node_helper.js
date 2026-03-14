@@ -291,33 +291,6 @@ module.exports = NodeHelper.create({
    * @param {Object} exifData - Objet contenant les EXIF à insérer (dateTaken, latitude, longitude, folderName, location, etc.).
    * @returns {Buffer} - Nouveau buffer avec les EXIF mis à jour.
    */
-  insertExifData_OLD: function (imageBuffer, exifData) {
-    const exifObj = {
-      "Exif": {}, // Pour DateTimeOriginal, UserComment, etc.
-      "GPS": {},  // Pour les coordonnées GPS
-    };
-
-    // 1. Ajout du nom du dossier dans UserComment
-    if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
-
-    // 2. Date de prise de vue
-    if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
-
-    // 3. Coordonnées GPS
-    if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
-      exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
-      exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
-      exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
-      exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
-    }
-
-    // 2. Ajout de la localisation dans ImageDescription
-    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = this.geocodeCoordinates(exifData.latitude, exifData.longitude);
-
-    // 4. Génération des bytes EXIF et insertion dans le buffer
-    const exifBytes = piexif.dump(exifObj);
-    return piexif.insert(exifBytes, imageBuffer);
-  },
   insertExifData: async function (imageBuffer, exifData) {
     // 1. Convertir en binary string (format attendu par piexifjs)
     const inputBuffer = Buffer.from(imageBuffer);
@@ -336,7 +309,7 @@ module.exports = NodeHelper.create({
       exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDMS(exifData.longitude);
       exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
       exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
-      exifObj["Exif"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(this._convertDecimalToDMS(exifData.latitude), this._convertDecimalToDMS(exifData.longitude));
+      //exifObj["Exif"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(this._convertDecimalToDMS(exifData.latitude), this._convertDecimalToDMS(exifData.longitude));
     }
 
 
@@ -436,11 +409,11 @@ _convertDecimalToDMS: function(decimal) {
         });
 
         // 4. Insertion des EXIF sur le buffer
-        processedBuffer = this.insertExifData(processedBuffer, exifData);
+        //processedBuffer = this.insertExifData(processedBuffer, exifData);
 
         // Réécrit le fichier avec les EXIF
-        fs.writeFileSync(localPath, processedBuffer);
-        console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
+        //fs.writeFileSync(localPath, processedBuffer);
+        //console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
 
 
 
@@ -461,7 +434,7 @@ _convertDecimalToDMS: function(decimal) {
     // --- 2. Extraction des EXIF (une seule fois) ---
 
 
-    console.log(`[DEBUG] LOCAL EXIF pour ${photo.name}:`, {
+    console.warn(`[DEBUG] LOCAL EXIF pour ${photo.name}:`, {
       dateTaken: exifData.dateTaken,
       location: exifData.location,
       longitude: exifData.folderName,
