@@ -3,7 +3,6 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const xml2js = require("xml2js");
-const exifr = require('exifr');
 const piexif = require("piexifjs");
 
 let sharp;
@@ -235,7 +234,7 @@ module.exports = NodeHelper.create({
  */
   extractExifData: async function (image) {
     try {
-      const metadata = await exifr.parse(image, {
+      const metadata = await piexif.dump(image, {
         exif: true,
         gps: true,
         ifd0: true,
