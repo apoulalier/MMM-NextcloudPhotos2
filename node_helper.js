@@ -251,7 +251,7 @@ module.exports = NodeHelper.create({
         longitude: gps[piexif.GPSIFD.GPSLongitude] || null,
         folderName: exif[piexif.ExifIFD.UserComment] || null,
         location: exif[piexif.ExifIFD.ImageDescription] || null,
-        dateTaken2: exif[piexif.ExifIFD.DateTimeOriginal] ? exif[piexif.ExifIFD.DateTimeOriginal] .replace(/:/g, '-').replace(' ', 'T') : null,
+        dateTaken2: exif[piexif.ExifIFD.DateTimeOriginal] ? exif[piexif.ExifIFD.DateTimeOriginal].replace(/:/g, '-').replace(' ', 'T') : null,
       };
     } catch (e) {
       console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
@@ -298,16 +298,16 @@ module.exports = NodeHelper.create({
       console.error("[DEBUG] Objet EXIF généré :", exifObj); // Log pour débogage
       return imageBuffer; // Retourne le buffer original en cas d'échec
     }
-},
+  },
 
-// Helper pour convertir les coordonnées décimales en DMS (degrés, minutes, secondes)
-_convertDecimalToDMS: function(decimal) {
-  const absDecimal = Math.abs(decimal);
-  const degrees = Math.floor(absDecimal);
-  const minutes = Math.floor((absDecimal - degrees) * 60);
-  const seconds = ((absDecimal - degrees - minutes / 60) * 3600).toFixed(2);
-  return [[degrees, 1], [minutes, 1], [Number(seconds), 100]];
-},
+  // Helper pour convertir les coordonnées décimales en DMS (degrés, minutes, secondes)
+  _convertDecimalToDMS: function (decimal) {
+    const absDecimal = Math.abs(decimal);
+    const degrees = Math.floor(absDecimal);
+    const minutes = Math.floor((absDecimal - degrees) * 60);
+    const seconds = ((absDecimal - degrees - minutes / 60) * 3600).toFixed(2);
+    return [[degrees, 1], [minutes, 1], [Number(seconds), 100]];
+  },
 
   downloadPhoto: async function (photo) {
     const token = await this.getValidToken();
@@ -370,25 +370,13 @@ _convertDecimalToDMS: function(decimal) {
           })
           .toBuffer(); // Récupère le buffer traité
 
-        // Écrit le fichier sur le disque
-        fs.writeFileSync(localPath, processedBuffer);
-        console.log(`[DEBUG] Image sauvegardée (redimensionnée): ${localPath}`);
-
-        console.log(`[DEBUG] EXIF distant pour ${localPath}:`, {
+        console.warn(`[DEBUG] EXIF distant pour ${localPath}:`, {
           dateTaken: exifData.dateTaken,
+          date2 : exifData.dateTaken2,
           latitude: exifData.latitude,
           longitude: exifData.longitude,
           position: exifData.location,
           folder: exifData.folderName,
-        });
-
-         exifData2 = await this.extractExifData(processedBuffer);
-         console.log(`[DEBUG] EXIF après SHARP pour ${localPath}:`, {
-          dateTaken: exifData2.dateTaken,
-          latitude: exifData2.latitude,
-          longitude: exifData2.longitude,
-          position: exifData2.location,
-          folder: exifData2.folderName,
         });
 
 
@@ -397,18 +385,14 @@ _convertDecimalToDMS: function(decimal) {
 
         // Réécrit le fichier avec les EXIF
         fs.writeFileSync(localPath, processedBuffer);
-        console.log(`[DEBUG] EXIF réinjectés dans ${localPath}`);
-
-
-
         image.destroy();
         console.log(`[DEBUG] Image sauvegardée (redimensionnée + EXIF préservés): ${localPath}`);
         // --- 4. Retour des données ---
-    return {
-      localPath,
-      localName,
-      exifData,
-    };
+        return {
+          localPath,
+          localName,
+          exifData,
+        };
       } else {
         fs.writeFileSync(localPath, imageBuffer);
         console.log(`[DEBUG] Image sauvegardée (brute): ${localPath}`);
@@ -472,7 +456,7 @@ _convertDecimalToDMS: function(decimal) {
             path: localPath,
             url: `/modules/MMM-NextcloudPhotos2/cache/${encodeURIComponent(localName)}`,
             folderName: exifData?.folderName,
-            dateTaken: exifData?.dateTaken, // Date de prise de vue
+            dateTaken: exifData?.dateTaken2, // Date de prise de vue
             location: exifData?.location,  // Ville et pays
           });
         } catch (dlErr) {
