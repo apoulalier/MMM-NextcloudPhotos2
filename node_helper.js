@@ -232,33 +232,6 @@ module.exports = NodeHelper.create({
   /**
  * Extrait les métadonnées EXIF d'un buffer ou d'un fichier.
  */
-  extractExifData_old: async function (image) {
-    try {
-      const metadata = await piexif.load(image, {
-        exif: true,
-        gps: true,
-        ifd0: true,
-      });
-
-      return {
-        dateTaken: metadata?.DateTimeOriginal,
-        latitude: metadata?.latitude,
-        longitude: metadata?.longitude,
-        folderName: metadata?.UserComment, // Champ personnalisé (ex: dossier + localisation)
-        location: metadata?.ImageDescription,
-      };
-    } catch (e) {
-      console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
-      return {
-        dateTaken: null,
-        latitude: null,
-        longitude: null,
-        folderName: null,
-        location: null,
-      };
-    }
-  },
-
   extractExifData: async function (arrayBuffer) {
     try {
       const buffer = Buffer.from(arrayBuffer);
@@ -278,6 +251,7 @@ module.exports = NodeHelper.create({
         longitude: gps[piexif.GPSIFD.GPSLongitude] || null,
         folderName: exif[piexif.ExifIFD.UserComment] || null,
         location: exif[piexif.ExifIFD.ImageDescription] || null,
+        dateTaken2: exif[piexif.ExifIFD.DateTimeOriginal] ? exif[piexif.ExifIFD.DateTimeOriginal] .replace(/:/g, '-').replace(' ', 'T') : null,
       };
     } catch (e) {
       console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
@@ -429,6 +403,12 @@ _convertDecimalToDMS: function(decimal) {
 
         image.destroy();
         console.log(`[DEBUG] Image sauvegardée (redimensionnée + EXIF préservés): ${localPath}`);
+        // --- 4. Retour des données ---
+    return {
+      localPath,
+      localName,
+      exifData,
+    };
       } else {
         fs.writeFileSync(localPath, imageBuffer);
         console.log(`[DEBUG] Image sauvegardée (brute): ${localPath}`);
