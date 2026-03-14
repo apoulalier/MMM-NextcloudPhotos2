@@ -256,12 +256,11 @@ module.exports = NodeHelper.create({
       if (longitude !== null && lonRef === "W") longitude = -longitude;
 
       return {
-        dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
+        dateTaken: this._fromExifDate(exif[piexif.ExifIFD.DateTimeOriginal]) || null,
         latitude: latitude || null,
         longitude: longitude || null,
         folderName: exif[piexif.ExifIFD.UserComment] || null,
-        location: exif[piexif.ExifIFD.ImageDescription] || null,
-        dateTaken2: exif[piexif.ExifIFD.DateTimeOriginal] ? exif[piexif.ExifIFD.DateTimeOriginal].replace(/:/g, '-').replace(' ', 'T') : null,
+        location: exif[piexif.ImageIFD.ImageDescription] || null,
       };
     } catch (e) {
       console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
@@ -286,7 +285,7 @@ module.exports = NodeHelper.create({
     };
 
     if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
-    if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
+    if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = this._toExifDate(exifData.dateTaken);
 
     if (exifData.latitude != null && exifData.longitude != null) {
       exifObj["GPS"] = {}; // Créer la clé GPS uniquement si nécessaire
@@ -329,6 +328,18 @@ module.exports = NodeHelper.create({
     const sec = dms[2][0] / dms[2][1];
     return deg + min / 60 + sec / 3600;
   },
+
+  // Stockage → EXIF  ("2024-07-21T11:02:26" → "2024:07:21 11:02:26")
+_toExifDate: function (isoStr) {
+  const [datePart, timePart] = isoStr.split("T");
+  return `${datePart.replace(/-/g, ":")} ${timePart.replace(/-/g, ":")}`;
+},
+
+// EXIF → Stockage  ("2024:07:21 11:02:26" → "2024-07-21T11:02:26")
+_fromExifDate: function(exifStr) {
+  const [datePart, timePart] = exifStr.split(" ");
+  return `${datePart.replace(/:/g, "-")}T${timePart}`;
+},
 
   downloadPhoto: async function (photo) {
     const token = await this.getValidToken();
@@ -392,8 +403,7 @@ module.exports = NodeHelper.create({
           .toBuffer(); // Récupère le buffer traité
 
         console.warn(`[DEBUG] EXIF distant pour ${localPath}:`, {
-          dateTaken: exifData.dateTaken2,
-          date2: exifData.dateTaken2,
+          dateTaken: exifData.dateTaken,
           latitude: exifData.latitude,
           longitude: exifData.longitude,
           position: exifData.location,
@@ -425,8 +435,7 @@ module.exports = NodeHelper.create({
     // --- 2. Extraction des EXIF (une seule fois) ---
 
     console.warn(`[DEBUG] EXIF local pour ${localPath}:`, {
-          dateTaken: exifData.dateTaken2,
-          date2: exifData.dateTaken2,
+          dateTaken: exifData.dateTaken,
           latitude: exifData.latitude,
           longitude: exifData.longitude,
           position: exifData.location,
@@ -475,7 +484,7 @@ module.exports = NodeHelper.create({
             path: localPath,
             url: `/modules/MMM-NextcloudPhotos2/cache/${encodeURIComponent(localName)}`,
             folderName: exifData?.folderName,
-            dateTaken: exifData?.dateTaken2, // Date de prise de vue
+            dateTaken: exifData?.dateTaken, // Date de prise de vue
             location: exifData?.location,  // Ville et pays
           });
         } catch (dlErr) {
