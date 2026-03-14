@@ -274,8 +274,8 @@ module.exports = NodeHelper.create({
 
       return {
         dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] || null,
-        latitude: gps[piexif.GPSIFD.GPSLatitude] ? gps[piexif.GPSIFD.GPSLatitude] : null,
-        longitude: gps[piexif.GPSIFD.GPSLongitude] ? gps[piexif.GPSIFD.GPSLongitude] : null,
+        latitude: gps[piexif.GPSIFD.GPSLatitude] || null,
+        longitude: gps[piexif.GPSIFD.GPSLongitude] || null,
         folderName: exif[piexif.ExifIFD.UserComment] || null,
         location: exif[piexif.ExifIFD.ImageDescription] || null,
       };
