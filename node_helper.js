@@ -295,24 +295,24 @@ module.exports = NodeHelper.create({
   },
   insertExifData: function (imageBuffer, exifData) {
   try {
-    // 1. Vérification que le buffer est un JPEG (pour éviter l'erreur "Given data is not jpeg")
+    // Afficher les premiers octets du buffer pour vérifier la signature JPEG
+    const firstBytes = imageBuffer.slice(0, 10).toString('hex');
+    console.log(`[DEBUG] Premiers octets du buffer : ${firstBytes}`); // Doit commencer par FFD8 (signature JPEG)
+
+    // Vérification explicite de la signature JPEG
     if (!(imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8)) {
-      console.warn("[WARNING] Le buffer n'est pas un JPEG. EXIF non modifiés.");
-      return imageBuffer; // Retourne le buffer original si ce n'est pas un JPEG
+      console.warn("[WARNING] Le buffer n'a pas la signature JPEG (FFD8). EXIF non modifiés.");
+      return imageBuffer;
     }
 
-    let exifObj = {
-      "Exif": {}, // Pour DateTimeOriginal, UserComment, etc.
-      "GPS": {},  // Pour les coordonnées GPS
+    const exifObj = {
+      "Exif": {},
+      "GPS": {},
     };
 
-    // 2. Ajout du nom du dossier dans UserComment
     if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
-
-    // 3. Date de prise de vue
     if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
 
-    // 4. Coordonnées GPS (comme dans votre code original)
     if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
       exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = exifData.latitude;
       exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = exifData.longitude;
@@ -320,14 +320,11 @@ module.exports = NodeHelper.create({
       exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
     }
 
-    // 5. Ajout de la localisation dans ImageDescription
-    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = this.geocodeCoordinates(exifData.latitude, exifData.longitude);
+    if (exifData.location) exifObj["Exif"][piexif.ExifIFD.ImageDescription] = exifData.location;
 
-    // 6. Génération des bytes EXIF et insertion dans le buffer
     const exifBytes = piexif.dump(exifObj);
     return piexif.insert(exifBytes, imageBuffer);
   } catch (error) {
-    // En cas d'erreur (ex: piexif.insert échoue), on log et retourne le buffer original
     console.error("[ERROR] Erreur lors de l'insertion des EXIF :", error.message);
     return imageBuffer;
   }
@@ -358,6 +355,7 @@ module.exports = NodeHelper.create({
       throw new Error(`Invalid filename, path traversal attempt: ${localName}`);
     }
 
+    console.log(`[DEBUG] FodlerName here  ${photo.folderName}`);
     // Variables pour les métadonnées
     let exifData = { dateTaken: null, latitude: null, longitude: null, location: null, folderName:  photo.folderName };
     let imageBuffer = null;
@@ -373,7 +371,7 @@ module.exports = NodeHelper.create({
       imageBuffer = response.data;
 
       // 1. Extraction des EXIF (distant)
-      exifData = await this.extractExifData(imageBuffer);
+      exifData = this.extractExifData(imageBuffer);
 
       // --- 2. Redimensionnement (si nécessaire) ---
       if (sharp) {
@@ -405,6 +403,11 @@ module.exports = NodeHelper.create({
           position : exifData.location,
           folder : exifData.folderName,
         });
+
+        // Log des premiers octets du buffer traité
+const firstBytesAfterSharp = processedBuffer.slice(0, 10).toString('hex');
+console.log(`[DEBUG] Premiers octets après Sharp : ${firstBytesAfterSharp}`); // Doit commencer par FFD8
+
           // 4. Insertion des EXIF sur le buffer
         processedBuffer = this.insertExifData(processedBuffer, exifData);
 
