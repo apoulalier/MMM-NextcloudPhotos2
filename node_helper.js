@@ -303,14 +303,14 @@ module.exports = NodeHelper.create({
     if (exifData.folderName) exifObj["Exif"][piexif.ExifIFD.UserComment] = exifData.folderName;
     if (exifData.dateTaken) exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifData.dateTaken;
 
-   /* if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
+    if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
       exifObj["GPS"] = {}; // Créer la clé GPS uniquement si nécessaire
       exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = this._convertDecimalToDMS(exifData.latitude);
       exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = this._convertDecimalToDMS(exifData.longitude);
       exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = exifData.latitude >= 0 ? "N" : "S";
       exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = exifData.longitude >= 0 ? "E" : "W";
       //exifObj["Exif"][piexif.ExifIFD.ImageDescription] = await this.geocodeCoordinates(this._convertDecimalToDMS(exifData.latitude), this._convertDecimalToDMS(exifData.longitude));
-    }*/
+    }
 
 
     try {
@@ -419,7 +419,7 @@ _convertDecimalToDMS: function(decimal) {
 
 
         // 4. Insertion des EXIF sur le buffer
-        processedBuffer = this.insertExifData(processedBuffer, exifData);
+        processedBuffer = await this.insertExifData(processedBuffer, exifData);
 
         // Réécrit le fichier avec les EXIF
         fs.writeFileSync(localPath, processedBuffer);
