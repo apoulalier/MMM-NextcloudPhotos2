@@ -257,11 +257,11 @@ module.exports = NodeHelper.create({
       if (longitude !== null && lonRef === "W") longitude = -longitude;
 
       return {
-        dateTaken: this._fromExifDate(exif[piexif.ExifIFD.DateTimeOriginal]) || null,
+        dateTaken: exif[piexif.ExifIFD.DateTimeOriginal] ? this._fromExifDate(exif[piexif.ExifIFD.DateTimeOriginal]) : null,
         latitude: latitude || null,
         longitude: longitude || null,
         folderName: exif[piexif.ExifIFD.UserComment] || null,
-        location: th[piexif.ImageIFD.ImageDescription] || null,
+        location: th[piexif.ImageIFD.ImageDescription] ? th[piexif.ImageIFD.ImageDescription]: null,
       };
     } catch (e) {
       console.warn("[WARNING] Impossible de lire les EXIF:", e.message);
