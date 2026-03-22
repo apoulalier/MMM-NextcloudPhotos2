@@ -11,20 +11,21 @@ body {
   background-color: #000;
   position:relative;
   width: calc(100vw - 800px);
-  height:75vh;
+  height:80vh;
 }
 
 /* Two image layers for smooth crossfade */
 .mmm-ncp-layer {
   position: absolute;
+  background-size:contain;
   background-repeat: no-repeat;
   background-position: center;
   opacity: 0;
   transition: opacity 2s ease-in-out;
-  top:0;
-  left:0;
-  right:0;
-  bottom:0;
+  top:10px;
+  left:10px;
+  right:10px;
+  bottom:10px;
   z-index:2;
 }
 
@@ -37,10 +38,10 @@ body {
   background-size:cover;
   background-repeat:no-repeat;
   background-position:center;
-  top:10px;
-  left:10px;
-  right:10px;
-  bottom:10px;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
   filter: blur(10px) sepia(80%) brightness(40%);
   z-index:1;
 }

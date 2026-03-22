@@ -75,6 +75,8 @@ Module.register("MMM-NextcloudPhotos2", {
       wrapper.appendChild(layer);
       this.layers.push(layer);
     }
+    if (this.config.showWidth) wrapper.style.width = this.config.showWidth + "px";
+    if (this.config.showHeight) wrapper.style.height = this.config.showHeight + "px";
     wrapper.appendChild(back);
     wrapper.appendChild(info);
 
