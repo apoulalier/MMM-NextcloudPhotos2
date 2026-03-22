@@ -45,7 +45,6 @@ Module.register("MMM-NextcloudPhotos2", {
     wrapper.className = "mmm-ncp-wrapper";
     let back = document.createElement("div");
     back.id = "GPHOTO_BACK";
-    back.className = "mmm-ncp-layer";
     let info = document.createElement("div");
     info.id = "GPHOTO_INFO";
     info.innerHTML = "Loading...";

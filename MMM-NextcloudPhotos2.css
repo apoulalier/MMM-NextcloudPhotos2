@@ -10,14 +10,13 @@ body {
   overflow: hidden;
   background-color: #000;
   position:relative;
-  width: calc(100vw - 750px);
+  width: calc(100vw - 800px);
   height:75vh;
 }
 
 /* Two image layers for smooth crossfade */
 .mmm-ncp-layer {
   position: absolute;
-  background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
   opacity: 0;
