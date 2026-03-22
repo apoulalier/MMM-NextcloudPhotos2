@@ -10,16 +10,16 @@ body {
   overflow: hidden;
   background-color: #000;
   position:relative;
-  min-width: 100%;
-  min-height:100%;
+  width: calc(100vw - 750px);
+  height:75vh;
 }
 
 /* Two image layers for smooth crossfade */
 .mmm-ncp-layer {
   position: absolute;
-  background-position: center;
+  background-size: cover;
   background-repeat: no-repeat;
-  background-size: contain;
+  background-position: center;
   opacity: 0;
   transition: opacity 2s ease-in-out;
   top:0;
@@ -34,14 +34,14 @@ body {
 }
 
 #GPHOTO_BACK {
+  position: absolute;
   background-size:cover;
   background-repeat:no-repeat;
   background-position:center;
-  position: absolute;
-  top:-25px;
-  left:-25px;
-  right:-25px;
-  bottom:-25px;
+  top:10px;
+  left:10px;
+  right:10px;
+  bottom:10px;
   filter: blur(10px) sepia(80%) brightness(40%);
   z-index:1;
 }
