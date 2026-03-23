@@ -10,8 +10,8 @@ body {
   overflow: hidden;
   background-color: #000;
   position:relative;
-  width: calc(100vw - 800px);
-  height:80vh;
+  width: 50vw;
+  height:75vh;
 }
 
 /* Two image layers for smooth crossfade */
